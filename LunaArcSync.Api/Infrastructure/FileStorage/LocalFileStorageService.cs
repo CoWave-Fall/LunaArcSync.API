@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http; // 引入 Http
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using LunaArcSync.Api.Core.Entities; // 引入实体
 using LunaArcSync.Api.Core.Interfaces;
+using System; // 引入 System
 using System.IO;
 using System.Threading.Tasks;
 
@@ -15,7 +17,6 @@ namespace LunaArcSync.Api.Infrastructure.FileStorage
 
         public LocalFileStorageService(IConfiguration configuration, ILogger<LocalFileStorageService> logger, IWebHostEnvironment environment)
         {
-            // ... (构造函数不变)
             _logger = logger;
             string relativePath = configuration.GetValue<string>("Storage:LocalPath") ?? "FileStorage";
             _storageRootPath = Path.Combine(environment.ContentRootPath, relativePath);
@@ -26,7 +27,6 @@ namespace LunaArcSync.Api.Infrastructure.FileStorage
             }
         }
 
-        // 实现新的接口方法
         public async Task<string> SaveFileAsync(IFormFile file, Document document, Core.Entities.Version version)
         {
             if (file == null || file.Length == 0)
@@ -34,7 +34,6 @@ namespace LunaArcSync.Api.Infrastructure.FileStorage
                 throw new ArgumentException("File is empty", nameof(file));
             }
 
-            // 1. 构建新的、有意义的文件名
             var fileExtension = Path.GetExtension(file.FileName);
             var newFileName = $"{document.DocumentId}_{version.VersionId}{fileExtension}";
 
@@ -46,7 +45,6 @@ namespace LunaArcSync.Api.Infrastructure.FileStorage
                 await file.CopyToAsync(stream);
             }
 
-            // 2. 返回构建好的文件名，以便存入数据库
             return newFileName;
         }
 
@@ -70,7 +68,35 @@ namespace LunaArcSync.Api.Infrastructure.FileStorage
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while deleting file: {FilePath}", filePath);
-                // 在生产环境中，这里可能需要更复杂的错误处理，但现在记录日志即可
+            }
+        }
+
+        // +++ 添加这个新方法的完整实现 +++
+        public async Task<byte[]?> ReadFileBytesAsync(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+            {
+                _logger.LogWarning("ReadFileBytesAsync called with empty file name.");
+                return null;
+            }
+
+            try
+            {
+                var filePath = Path.Combine(_storageRootPath, fileName);
+                _logger.LogInformation("Attempting to read file from: {FilePath}", filePath);
+
+                if (File.Exists(filePath))
+                {
+                    return await File.ReadAllBytesAsync(filePath);
+                }
+
+                _logger.LogWarning("File not found at path: {FilePath}", filePath);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while reading file: {FileName}", fileName);
+                return null;
             }
         }
     }

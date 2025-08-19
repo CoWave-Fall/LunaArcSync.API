@@ -21,6 +21,20 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- 1. 配置服务 (依赖注入容器) ---
 
+// +++ 添加 CORS 服务 +++
+var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: MyAllowSpecificOrigins,
+                      policy =>
+                      {
+                          // 在开发环境中，允许任何来源、任何方法、任何请求头
+                          policy.AllowAnyOrigin()
+                                .AllowAnyMethod()
+                                .AllowAnyHeader();
+                      });
+});
+
 // 1.1 注册数据库上下文 (DbContext)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -145,6 +159,9 @@ app.UseHttpsRedirection();
 
 // 启用路由
 app.UseRouting();
+
+// +++ 启用 CORS 中间件 +++
+app.UseCors(MyAllowSpecificOrigins);
 
 // 启用认证中间件 (必须在 UseAuthorization 之前)
 app.UseAuthentication();

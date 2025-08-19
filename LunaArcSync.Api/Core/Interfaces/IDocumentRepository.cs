@@ -64,5 +64,9 @@ namespace LunaArcSync.Api.Core.Interfaces
         /// Checks if a version exists.
         /// </summary>
         Task<bool> VersionExistsAsync(Guid versionId);
+
+        Task<Core.Entities.Version?> GetVersionByIdAsync(Guid versionId);
+
+
     }
 }

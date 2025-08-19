@@ -31,16 +31,12 @@ namespace LunaArcSync.Api.Infrastructure.Data
         public async Task<PagedResultDto<Document>> GetAllDocumentsAsync(string userId, int pageNumber, int pageSize)
         {
             var query = _context.Documents.Where(d => d.UserId == userId);
-
-            // 修正了逻辑错误：只计算当前用户的文档总数
             var totalCount = await query.CountAsync();
-
             var items = await query
                 .OrderByDescending(d => d.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-
             return new PagedResultDto<Document>(items, totalCount, pageNumber, pageSize);
         }
 
@@ -60,7 +56,6 @@ namespace LunaArcSync.Api.Infrastructure.Data
 
         public async Task<Document> CreateDocumentAsync(Document newDocument, IFormFile file)
         {
-            // 这里的 userId 已经在 Controller 中设置到 newDocument 对象上了
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -94,9 +89,7 @@ namespace LunaArcSync.Api.Infrastructure.Data
         {
             var document = await _context.Documents
                 .FirstOrDefaultAsync(d => d.DocumentId == id && d.UserId == userId);
-
             if (document == null) return null;
-
             document.Title = newTitle;
             document.UpdatedAt = DateTime.UtcNow;
             _context.Documents.Update(document);
@@ -110,9 +103,7 @@ namespace LunaArcSync.Api.Infrastructure.Data
                 .Where(d => d.DocumentId == id && d.UserId == userId)
                 .Include(d => d.Versions)
                 .FirstOrDefaultAsync();
-
             if (documentToDelete == null) return false;
-
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -144,22 +135,18 @@ namespace LunaArcSync.Api.Infrastructure.Data
             {
                 return new PagedResultDto<Document>(new List<Document>(), 0, pageNumber, pageSize);
             }
-
-            // 修复了安全漏洞：确保只在当前用户的文档中搜索
             var searchQuery = _context.Versions
                 .Where(v => v.Document!.UserId == userId &&
                             v.OcrDataNormalized != null &&
                             v.OcrDataNormalized.Contains(normalizedQuery))
                 .Select(v => v.Document!)
                 .Distinct();
-
             var totalCount = await searchQuery.CountAsync();
             var items = await searchQuery
                 .OrderByDescending(d => d.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-
             return new PagedResultDto<Document>(items, totalCount, pageNumber, pageSize);
         }
 
@@ -180,7 +167,6 @@ namespace LunaArcSync.Api.Infrastructure.Data
         {
             var document = await _context.Documents.FindAsync(documentId);
             if (document == null) return false;
-
             document.CurrentVersionId = versionId;
             document.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
@@ -190,6 +176,14 @@ namespace LunaArcSync.Api.Infrastructure.Data
         public async Task<bool> VersionExistsAsync(Guid versionId)
         {
             return await _context.Versions.AnyAsync(v => v.VersionId == versionId);
+        }
+
+        // +++ 这是我们添加并修正的方法 +++
+        public async Task<Core.Entities.Version?> GetVersionByIdAsync(Guid versionId)
+        {
+            // 使用正确的 DbSet 名称 'Versions'
+            return await _context.Versions
+                .FirstOrDefaultAsync(v => v.VersionId == versionId);
         }
 
         #endregion
