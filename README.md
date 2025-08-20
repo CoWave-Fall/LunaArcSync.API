@@ -118,6 +118,9 @@
 *   `POST /api/jobs/ocr/{versionId}`: 提交一个 OCR 任务。
 *   `POST /api/jobs/stitch/document/{documentId}`: 提交一个图像拼接任务。
 
+### Images（需认证）
+*  `GET /api/images/{versionId}`:获得图片传入
+
 ## 🔮 未来展望
 
 *   **客户端开发**: 使用 Flutter 或 .NET MAUI 构建跨平台客户端。
