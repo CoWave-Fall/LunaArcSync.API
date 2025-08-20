@@ -7,11 +7,11 @@ namespace LunaArcSync.Api.Core.Interfaces
     public interface IImageProcessingService
     {
         /// <summary>
-        /// Stitches multiple images into a single image and creates a new version for the document.
+        /// Stitches multiple images into a single image and creates a new version for the page.
         /// </summary>
-        /// <param name="documentId">The ID of the document to which the new version will belong.</param>
+        /// <param name="pageId">The ID of the page to which the new version will belong.</param>
         /// <param name="sourceVersionIds">A list of version IDs whose images need to be stitched.</param>
         /// <returns>The newly created Version entity.</returns>
-        Task<Core.Entities.Version> StitchImagesAsync(string userId, Guid documentId, List<Guid> sourceVersionIds);
+        Task<Core.Entities.Version> StitchImagesAsync(string userId, Guid pageId, List<Guid> sourceVersionIds);
     }
 }

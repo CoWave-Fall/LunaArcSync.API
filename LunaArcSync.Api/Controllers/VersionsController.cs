@@ -13,30 +13,30 @@ namespace LunaArcSync.Api.Controllers
 {
     [Authorize]
     [ApiController]
-    [Route("api/documents/{documentId}/versions")] // 嵌套路由，非常清晰
+    [Route("api/pages/{pageId}/versions")] // 嵌套路由，非常清晰
     public class VersionsController(
-                IDocumentRepository documentRepository,
+                IPageRepository pageRepository,
                 Infrastructure.Data.AppDbContext context,
                 ILogger<JobsController> logger) : ControllerBase
     {
-        private readonly IDocumentRepository _documentRepository = documentRepository;
+        private readonly IPageRepository _pageRepository = pageRepository;
         private readonly Infrastructure.Data.AppDbContext _context = context;
         private readonly ILogger<JobsController> _logger = logger;
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<VersionDto>>> GetVersions(Guid documentId)
+        public async Task<ActionResult<IEnumerable<VersionDto>>> GetVersions(Guid pageId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
 
-            var document = await _documentRepository.GetDocumentWithVersionsByIdAsync(documentId, userId);
-            if (document == null)
+            var page = await _pageRepository.GetPageWithVersionsByIdAsync(pageId, userId);
+            if (page == null)
             {
-                return NotFound("Document not found.");
+                return NotFound("Page not found.");
             }
 
-            var versionDtos = document.Versions.Select(v =>
+            var versionDtos = page.Versions.Select(v =>
             {
                 OcrResultDto? ocrResult = null;
                 if (!string.IsNullOrEmpty(v.OcrData))
@@ -66,23 +66,23 @@ namespace LunaArcSync.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<VersionDto>> CreateVersion(Guid documentId, [FromForm] CreateVersionDto createVersionDto)
+        public async Task<ActionResult<VersionDto>> CreateVersion(Guid pageId, [FromForm] CreateVersionDto createVersionDto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
 
-            var document = await _documentRepository.GetDocumentWithVersionsByIdAsync(documentId, userId);
-            if (document == null)
+            var page = await _pageRepository.GetPageWithVersionsByIdAsync(pageId, userId);
+            if (page == null)
             {
-                return NotFound("Document not found.");
+                return NotFound("Page not found.");
             }
 
             // 1. 创建新的 Version 实体
             var newVersion = new Core.Entities.Version
             {
-                DocumentId = documentId,
-                VersionNumber = document.Versions.Any() ? document.Versions.Max(v => v.VersionNumber) + 1 : 1,
+                PageId = pageId,
+                VersionNumber = page.Versions.Any() ? page.Versions.Max(v => v.VersionNumber) + 1 : 1,
                 Message = createVersionDto.Message
             };
 
@@ -90,10 +90,10 @@ namespace LunaArcSync.Api.Controllers
             try
             {
                 // 2. 在 Repository 中创建版本并保存文件
-                var createdVersion = await _documentRepository.CreateNewVersionAsync(document, newVersion, createVersionDto.File);
+                var createdVersion = await _pageRepository.CreateNewVersionAsync(page, newVersion, createVersionDto.File);
 
                 // 3. 将新创建的版本设置为当前版本
-                await _documentRepository.SetCurrentVersionAsync(documentId, createdVersion.VersionId);
+                await _pageRepository.SetCurrentVersionAsync(pageId, createdVersion.VersionId);
 
                 await transaction.CommitAsync();
 
@@ -106,7 +106,7 @@ namespace LunaArcSync.Api.Controllers
                     CreatedAt = createdVersion.CreatedAt
                 };
 
-                return CreatedAtAction(nameof(GetVersions), new { documentId = documentId }, versionDto);
+                return CreatedAtAction(nameof(GetVersions), new { pageId = pageId }, versionDto);
             }
             catch (Exception)
             {

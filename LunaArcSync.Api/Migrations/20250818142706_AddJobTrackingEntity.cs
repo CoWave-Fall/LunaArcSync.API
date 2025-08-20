@@ -18,7 +18,7 @@ namespace LunaArcSync.Api.Migrations
                     JobId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Type = table.Column<int>(type: "INTEGER", nullable: false),
                     Status = table.Column<int>(type: "INTEGER", nullable: false),
-                    AssociatedDocumentId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    AssociatedPageId = table.Column<Guid>(type: "TEXT", nullable: false),
                     SubmittedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
                     StartedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
                     CompletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),

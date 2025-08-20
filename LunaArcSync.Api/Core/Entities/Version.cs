@@ -23,9 +23,9 @@ namespace LunaArcSync.Api.Core.Entities
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // 外键
-        public Guid DocumentId { get; set; }
+        public Guid PageId { get; set; }
         // 导航属性
-        public Document? Document { get; set; }
+        public Page? Page { get; set; }
 
     }
 }

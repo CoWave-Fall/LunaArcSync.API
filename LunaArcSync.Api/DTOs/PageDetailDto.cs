@@ -1,8 +1,8 @@
 ﻿namespace LunaArcSync.Api.DTOs
 {
-    public class DocumentDetailDto
+    public class PageDetailDto
     {
-        public Guid DocumentId { get; set; }
+        public Guid PageId { get; set; }
         public string Title { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

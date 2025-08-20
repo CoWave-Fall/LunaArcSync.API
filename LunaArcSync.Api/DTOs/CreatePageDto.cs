@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LunaArcSync.Api.DTOs
 {
-    public class CreateDocumentDto
+    public class CreatePageDto
     {
         [Required]
         [MaxLength(200)]

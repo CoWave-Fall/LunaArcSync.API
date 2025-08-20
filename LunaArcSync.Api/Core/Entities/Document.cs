@@ -3,11 +3,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LunaArcSync.Api.Core.Entities
 {
-    public class Document
+    public class Page
     {
         [Key] // 声明为主键
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)] // 声明为自增
-        public Guid DocumentId { get; set; }
+        public Guid PageId { get; set; }
 
         [Required]
         [MaxLength(200)]

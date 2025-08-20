@@ -209,9 +209,9 @@ namespace LunaArcSync.Api.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Document", b =>
+            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Page", b =>
                 {
-                    b.Property<Guid>("DocumentId")
+                    b.Property<Guid>("PageId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
@@ -233,11 +233,11 @@ namespace LunaArcSync.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.HasKey("DocumentId");
+                    b.HasKey("PageId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Documents");
+                    b.ToTable("Pages");
                 });
 
             modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Job", b =>
@@ -246,7 +246,7 @@ namespace LunaArcSync.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("AssociatedDocumentId")
+                    b.Property<Guid>("AssociatedPageId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("CompletedAt")
@@ -281,7 +281,7 @@ namespace LunaArcSync.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("DocumentId")
+                    b.Property<Guid>("PageId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ImagePath")
@@ -303,7 +303,7 @@ namespace LunaArcSync.Api.Migrations
 
                     b.HasKey("VersionId");
 
-                    b.HasIndex("DocumentId");
+                    b.HasIndex("PageId");
 
                     b.ToTable("Versions");
                 });
@@ -359,10 +359,10 @@ namespace LunaArcSync.Api.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Document", b =>
+            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Page", b =>
                 {
                     b.HasOne("LunaArcSync.Api.Core.Entities.AppUser", "User")
-                        .WithMany("Documents")
+                        .WithMany("Pages")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -372,21 +372,21 @@ namespace LunaArcSync.Api.Migrations
 
             modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Version", b =>
                 {
-                    b.HasOne("LunaArcSync.Api.Core.Entities.Document", "Document")
+                    b.HasOne("LunaArcSync.Api.Core.Entities.Page", "Page")
                         .WithMany("Versions")
-                        .HasForeignKey("DocumentId")
+                        .HasForeignKey("PageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Document");
+                    b.Navigation("Page");
                 });
 
             modelBuilder.Entity("LunaArcSync.Api.Core.Entities.AppUser", b =>
                 {
-                    b.Navigation("Documents");
+                    b.Navigation("Pages");
                 });
 
-            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Document", b =>
+            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Page", b =>
                 {
                     b.Navigation("Versions");
                 });

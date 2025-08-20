@@ -27,7 +27,7 @@ namespace LunaArcSync.Api.Infrastructure.FileStorage
             }
         }
 
-        public async Task<string> SaveFileAsync(IFormFile file, Document document, Core.Entities.Version version)
+        public async Task<string> SaveFileAsync(IFormFile file, Page page, Core.Entities.Version version)
         {
             if (file == null || file.Length == 0)
             {
@@ -35,7 +35,7 @@ namespace LunaArcSync.Api.Infrastructure.FileStorage
             }
 
             var fileExtension = Path.GetExtension(file.FileName);
-            var newFileName = $"{document.DocumentId}_{version.VersionId}{fileExtension}";
+            var newFileName = $"{page.PageId}_{version.VersionId}{fileExtension}";
 
             var filePath = Path.Combine(_storageRootPath, newFileName);
             _logger.LogInformation("Saving file to absolute path: {filePath}", filePath);

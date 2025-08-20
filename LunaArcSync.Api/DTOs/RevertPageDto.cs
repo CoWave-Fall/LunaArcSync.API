@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LunaArcSync.Api.DTOs
 {
-    public class RevertDocumentDto
+    public class RevertPageDto
     {
         [Required]
         public Guid TargetVersionId { get; set; }

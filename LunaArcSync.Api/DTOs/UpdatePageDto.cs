@@ -2,7 +2,7 @@
 
 namespace LunaArcSync.Api.DTOs
 {
-    public class UpdateDocumentDto
+    public class UpdatePageDto
     {
         [Required]
         [MaxLength(200)]

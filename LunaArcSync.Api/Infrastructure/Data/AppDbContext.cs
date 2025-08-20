@@ -11,7 +11,7 @@ namespace LunaArcSync.Api.Infrastructure.Data
         {
         }
 
-        public DbSet<Document> Documents { get; set; }
+        public DbSet<Page> Pages { get; set; }
         public DbSet<Core.Entities.Version> Versions { get; set; }
         public DbSet<Job> Jobs { get; set; }
 
@@ -22,7 +22,7 @@ namespace LunaArcSync.Api.Infrastructure.Data
 
             // --- 添加新的实体关系配置 ---
             modelBuilder.Entity<AppUser>()
-                .HasMany(u => u.Documents) // 一个用户有多个文档
+                .HasMany(u => u.Pages) // 一个用户有多个文档
                 .WithOne(d => d.User)      // 一个文档有一个用户
                 .HasForeignKey(d => d.UserId); // 外键是 UserId
         }

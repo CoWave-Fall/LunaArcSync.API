@@ -9,7 +9,7 @@ namespace LunaArcSync.Api.Core.Interfaces
         /// <summary>
         /// Saves a file to the configured storage and returns its unique name.
         /// </summary>
-        Task<string> SaveFileAsync(IFormFile file, Document document, Core.Entities.Version version);
+        Task<string> SaveFileAsync(IFormFile file, Page page, Core.Entities.Version version);
 
         /// <summary>
         /// Deletes a file from the storage.

@@ -12,19 +12,19 @@ namespace LunaArcSync.Api.Controllers
     [Authorize]
     public class ImagesController : ControllerBase
     {
-        private readonly IDocumentRepository _documentRepository;
+        private readonly IPageRepository _pageRepository;
         private readonly IFileStorageService _fileStorageService;
 
-        public ImagesController(IDocumentRepository documentRepository, IFileStorageService fileStorageService)
+        public ImagesController(IPageRepository pageRepository, IFileStorageService fileStorageService)
         {
-            _documentRepository = documentRepository;
+            _pageRepository = pageRepository;
             _fileStorageService = fileStorageService;
         }
 
         [HttpGet("{versionId}")]
         public async Task<IActionResult> GetImageByVersionId(Guid versionId)
         {
-            var version = await _documentRepository.GetVersionByIdAsync(versionId);
+            var version = await _pageRepository.GetVersionByIdAsync(versionId);
 
             if (version == null || string.IsNullOrEmpty(version.ImagePath))
             {
@@ -38,8 +38,8 @@ namespace LunaArcSync.Api.Controllers
             }
 
             // 安全检查：确保该版本所属的文档属于当前登录的用户
-            var document = await _documentRepository.GetDocumentByIdAsync(version.DocumentId, userId);
-            if (document == null)
+            var page = await _pageRepository.GetPageByIdAsync(version.PageId, userId);
+            if (page == null)
             {
                 return Forbid(); // 如果文档不属于该用户，则明确拒绝访问
             }

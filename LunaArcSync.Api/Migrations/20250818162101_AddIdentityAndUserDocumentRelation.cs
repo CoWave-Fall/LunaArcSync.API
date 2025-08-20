@@ -6,14 +6,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LunaArcSync.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class AddIdentityAndUserDocumentRelation : Migration
+    public partial class AddIdentityAndUserPageRelation : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
                 name: "UserId",
-                table: "Documents",
+                table: "Pages",
                 type: "TEXT",
                 nullable: false,
                 defaultValue: "");
@@ -164,8 +164,8 @@ namespace LunaArcSync.Api.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Documents_UserId",
-                table: "Documents",
+                name: "IX_Pages_UserId",
+                table: "Pages",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
@@ -206,8 +206,8 @@ namespace LunaArcSync.Api.Migrations
                 unique: true);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_Documents_AspNetUsers_UserId",
-                table: "Documents",
+                name: "FK_Pages_AspNetUsers_UserId",
+                table: "Pages",
                 column: "UserId",
                 principalTable: "AspNetUsers",
                 principalColumn: "Id",
@@ -218,8 +218,8 @@ namespace LunaArcSync.Api.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_Documents_AspNetUsers_UserId",
-                table: "Documents");
+                name: "FK_Pages_AspNetUsers_UserId",
+                table: "Pages");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
@@ -243,12 +243,12 @@ namespace LunaArcSync.Api.Migrations
                 name: "AspNetUsers");
 
             migrationBuilder.DropIndex(
-                name: "IX_Documents_UserId",
-                table: "Documents");
+                name: "IX_Pages_UserId",
+                table: "Pages");
 
             migrationBuilder.DropColumn(
                 name: "UserId",
-                table: "Documents");
+                table: "Pages");
         }
     }
 }

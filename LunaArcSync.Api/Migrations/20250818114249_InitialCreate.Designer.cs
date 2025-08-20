@@ -20,9 +20,9 @@ namespace LunaArcSync.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.19");
 
-            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Document", b =>
+            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Page", b =>
                 {
-                    b.Property<Guid>("DocumentId")
+                    b.Property<Guid>("PageId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
@@ -40,9 +40,9 @@ namespace LunaArcSync.Api.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
-                    b.HasKey("DocumentId");
+                    b.HasKey("PageId");
 
-                    b.ToTable("Documents");
+                    b.ToTable("Pages");
                 });
 
             modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Version", b =>
@@ -54,7 +54,7 @@ namespace LunaArcSync.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("DocumentId")
+                    b.Property<Guid>("PageId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ImagePath")
@@ -73,23 +73,23 @@ namespace LunaArcSync.Api.Migrations
 
                     b.HasKey("VersionId");
 
-                    b.HasIndex("DocumentId");
+                    b.HasIndex("PageId");
 
                     b.ToTable("Versions");
                 });
 
             modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Version", b =>
                 {
-                    b.HasOne("LunaArcSync.Api.Core.Entities.Document", "Document")
+                    b.HasOne("LunaArcSync.Api.Core.Entities.Page", "Page")
                         .WithMany("Versions")
-                        .HasForeignKey("DocumentId")
+                        .HasForeignKey("PageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Document");
+                    b.Navigation("Page");
                 });
 
-            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Document", b =>
+            modelBuilder.Entity("LunaArcSync.Api.Core.Entities.Page", b =>
                 {
                     b.Navigation("Versions");
                 });

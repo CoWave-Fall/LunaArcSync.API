@@ -16,30 +16,30 @@ namespace LunaArcSync.Api.Infrastructure.Services
     {
         private readonly ILogger<OpenCvImageProcessingService> _logger;
         private readonly AppDbContext _context;
-        private readonly IDocumentRepository _documentRepository;
+        private readonly IPageRepository _pageRepository;
         private readonly string _storageRootPath;
 
         public OpenCvImageProcessingService(
             ILogger<OpenCvImageProcessingService> logger,
             AppDbContext context,
-            IDocumentRepository documentRepository,
+            IPageRepository pageRepository,
             IWebHostEnvironment environment)
         {
             _logger = logger;
             _context = context;
-            _documentRepository = documentRepository;
+            _pageRepository = pageRepository;
             _storageRootPath = Path.Combine(environment.ContentRootPath, "FileStorage");
         }
 
         // --- 核心修正：确保这个方法签名与 IImageProcessingService.cs 中的定义完全一致 ---
-        public async Task<Core.Entities.Version> StitchImagesAsync(string userId, Guid documentId, List<Guid> sourceVersionIds)
+        public async Task<Core.Entities.Version> StitchImagesAsync(string userId, Guid pageId, List<Guid> sourceVersionIds)
         {
             if (sourceVersionIds == null || sourceVersionIds.Count < 2)
             {
                 throw new ArgumentException("At least two source images are required for stitching.");
             }
 
-            _logger.LogInformation("Starting stitching process for user {UserId}, document {DocumentId}", userId, documentId);
+            _logger.LogInformation("Starting stitching process for user {UserId}, page {PageId}", userId, pageId);
 
             var sourceVersions = _context.Versions
                 .Where(v => sourceVersionIds.Contains(v.VersionId))
@@ -61,23 +61,23 @@ namespace LunaArcSync.Api.Infrastructure.Services
 
                 if (status != Stitcher.Status.OK)
                 {
-                    _logger.LogError("OpenCV stitching failed for document {DocumentId} with status: {Status}", documentId, status);
+                    _logger.LogError("OpenCV stitching failed for page {PageId} with status: {Status}", pageId, status);
                     throw new InvalidOperationException($"Could not stitch images. Status: {status}");
                 }
 
                 _logger.LogInformation("Stitching successful. Creating new version.");
 
-                // --- 修正部分：使用传入的 userId 来获取文档，并确保只有一个 'document' 变量 ---
-                var document = await _documentRepository.GetDocumentWithVersionsByIdAsync(documentId, userId);
-                if (document == null)
+                // --- 修正部分：使用传入的 userId 来获取文档，并确保只有一个 'page' 变量 ---
+                var page = await _pageRepository.GetPageWithVersionsByIdAsync(pageId, userId);
+                if (page == null)
                 {
-                    throw new KeyNotFoundException($"Document with ID {documentId} not found for user {userId}.");
+                    throw new KeyNotFoundException($"Page with ID {pageId} not found for user {userId}.");
                 }
 
                 var newVersion = new Core.Entities.Version
                 {
-                    DocumentId = documentId,
-                    VersionNumber = document.Versions.Any() ? document.Versions.Max(v => v.VersionNumber) + 1 : 1,
+                    PageId = pageId,
+                    VersionNumber = page.Versions.Any() ? page.Versions.Max(v => v.VersionNumber) + 1 : 1,
                     Message = $"Stitched from {sourceVersionIds.Count} images."
                 };
 
@@ -86,7 +86,7 @@ namespace LunaArcSync.Api.Infrastructure.Services
                 await _context.SaveChangesAsync();
 
                 var fileExtension = Path.GetExtension(imagePaths.First());
-                var newFileName = $"{document.DocumentId}_{newVersion.VersionId}{fileExtension}";
+                var newFileName = $"{page.PageId}_{newVersion.VersionId}{fileExtension}";
                 var newFilePath = Path.Combine(_storageRootPath, newFileName);
 
                 pano.ImWrite(newFilePath);
@@ -97,7 +97,7 @@ namespace LunaArcSync.Api.Infrastructure.Services
                 {
                     _context.Versions.Update(newVersion);
                     await _context.SaveChangesAsync();
-                    await _documentRepository.SetCurrentVersionAsync(documentId, newVersion.VersionId);
+                    await _pageRepository.SetCurrentVersionAsync(pageId, newVersion.VersionId);
                     await transaction.CommitAsync();
                 }
                 catch (Exception ex)

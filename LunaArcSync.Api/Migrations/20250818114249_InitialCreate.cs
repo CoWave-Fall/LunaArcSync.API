@@ -12,10 +12,10 @@ namespace LunaArcSync.Api.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Documents",
+                name: "Pages",
                 columns: table => new
                 {
-                    DocumentId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    PageId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Title = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
                     CurrentVersionId = table.Column<Guid>(type: "TEXT", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
@@ -23,7 +23,7 @@ namespace LunaArcSync.Api.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Documents", x => x.DocumentId);
+                    table.PrimaryKey("PK_Pages", x => x.PageId);
                 });
 
             migrationBuilder.CreateTable(
@@ -36,23 +36,23 @@ namespace LunaArcSync.Api.Migrations
                     ImagePath = table.Column<string>(type: "TEXT", nullable: false),
                     OcrData = table.Column<string>(type: "TEXT", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    DocumentId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    PageId = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Versions", x => x.VersionId);
                     table.ForeignKey(
-                        name: "FK_Versions_Documents_DocumentId",
-                        column: x => x.DocumentId,
-                        principalTable: "Documents",
-                        principalColumn: "DocumentId",
+                        name: "FK_Versions_Pages_PageId",
+                        column: x => x.PageId,
+                        principalTable: "Pages",
+                        principalColumn: "PageId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Versions_DocumentId",
+                name: "IX_Versions_PageId",
                 table: "Versions",
-                column: "DocumentId");
+                column: "PageId");
         }
 
         /// <inheritdoc />
@@ -62,7 +62,7 @@ namespace LunaArcSync.Api.Migrations
                 name: "Versions");
 
             migrationBuilder.DropTable(
-                name: "Documents");
+                name: "Pages");
         }
     }
 }

@@ -9,6 +9,6 @@ namespace LunaArcSync.Api.Core.Entities
         // public string? Nickname { get; set; }
 
         // 添加一个导航属性，表示一个用户可以拥有多个文档
-        public ICollection<Document> Documents { get; set; } = new List<Document>();
+        public ICollection<Page> Pages { get; set; } = new List<Page>();
     }
 }

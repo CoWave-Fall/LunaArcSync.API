@@ -108,7 +108,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 // 1.5 注册自定义的应用服务
 // Repository
-builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+builder.Services.AddScoped<IPageRepository, PageRepository>();
 
 // 核心服务
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();

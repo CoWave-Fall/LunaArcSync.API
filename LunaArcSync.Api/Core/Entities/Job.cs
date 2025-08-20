@@ -25,7 +25,7 @@ namespace LunaArcSync.Api.Core.Entities
         public JobType Type { get; set; }
         public JobStatus Status { get; set; }
 
-        public Guid AssociatedDocumentId { get; set; }
+        public Guid AssociatedPageId { get; set; }
 
         public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
         public DateTime? StartedAt { get; set; }

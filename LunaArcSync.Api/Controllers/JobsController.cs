@@ -21,20 +21,20 @@ namespace LunaArcSync.Api.Controllers
         private readonly IBackgroundTaskQueue _taskQueue;
         private readonly ILogger<JobsController> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly IDocumentRepository _documentRepository;
+        private readonly IPageRepository _pageRepository;
         private readonly AppDbContext _context;
 
         public JobsController(
             IBackgroundTaskQueue taskQueue,
             ILogger<JobsController> logger,
             IServiceProvider serviceProvider,
-            IDocumentRepository documentRepository,
+            IPageRepository pageRepository,
             AppDbContext context)
         {
             _taskQueue = taskQueue;
             _logger = logger;
             _serviceProvider = serviceProvider;
-            _documentRepository = documentRepository;
+            _pageRepository = pageRepository;
             _context = context;
         }
 
@@ -53,7 +53,7 @@ namespace LunaArcSync.Api.Controllers
                 JobId = job.JobId,
                 Type = job.Type.ToString(),
                 Status = job.Status.ToString(),
-                AssociatedDocumentId = job.AssociatedDocumentId,
+                AssociatedPageId = job.AssociatedPageId,
                 SubmittedAt = job.SubmittedAt,
                 StartedAt = job.StartedAt,
                 CompletedAt = job.CompletedAt,
@@ -78,7 +78,7 @@ namespace LunaArcSync.Api.Controllers
                 JobId = Guid.NewGuid(),
                 Type = JobType.Ocr,
                 Status = JobStatus.Queued,
-                AssociatedDocumentId = version.DocumentId
+                AssociatedPageId = version.PageId
             };
             await _context.Jobs.AddAsync(newJob);
             await _context.SaveChangesAsync();
@@ -138,8 +138,8 @@ namespace LunaArcSync.Api.Controllers
             return Accepted(new { jobId = newJob.JobId, message = "OCR job has been queued." });
         }
 
-        [HttpPost("stitch/document/{documentId}")]
-        public async Task<IActionResult> RequestStitch(Guid documentId, [FromBody] StitchJobDto stitchJobDto)
+        [HttpPost("stitch/page/{pageId}")]
+        public async Task<IActionResult> RequestStitch(Guid pageId, [FromBody] StitchJobDto stitchJobDto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // <--- 获取 userId
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
@@ -149,15 +149,15 @@ namespace LunaArcSync.Api.Controllers
                 return BadRequest(ModelState);
             }
 
-            var documentExists = await _documentRepository.GetDocumentByIdAsync(documentId, userId);
-            if (documentExists == null)
+            var pageExists = await _pageRepository.GetPageByIdAsync(pageId, userId);
+            if (pageExists == null)
             {
-                return NotFound(new { message = $"No document found with ID: {documentId}" });
+                return NotFound(new { message = $"No page found with ID: {pageId}" });
             }
 
             foreach (var versionId in stitchJobDto.SourceVersionIds)
             {
-                if (!await _documentRepository.VersionExistsAsync(versionId))
+                if (!await _pageRepository.VersionExistsAsync(versionId))
                 {
                     return NotFound(new { message = $"No version found with ID: {versionId}" });
                 }
@@ -168,12 +168,12 @@ namespace LunaArcSync.Api.Controllers
                 JobId = Guid.NewGuid(),
                 Type = JobType.Stitch,
                 Status = JobStatus.Queued,
-                AssociatedDocumentId = documentId
+                AssociatedPageId = pageId
             };
             await _context.Jobs.AddAsync(newJob);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Created and queued Stitch job {JobId} for document ID: {DocumentId}", newJob.JobId, documentId);
+            _logger.LogInformation("Created and queued Stitch job {JobId} for page ID: {PageId}", newJob.JobId, pageId);
 
             _taskQueue.QueueBackgroundWorkItem(async token =>
             {
@@ -195,7 +195,7 @@ namespace LunaArcSync.Api.Controllers
                             logger.LogInformation("Job {JobId} status updated to Processing.", job.JobId);
                         }
 
-                        await imageService.StitchImagesAsync(userId, documentId, stitchJobDto.SourceVersionIds);
+                        await imageService.StitchImagesAsync(userId, pageId, stitchJobDto.SourceVersionIds);
 
                         job = await dbContext.Jobs.FindAsync(newJob.JobId);
                         if (job != null)
