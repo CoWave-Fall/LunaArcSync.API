@@ -71,7 +71,7 @@ namespace LunaArcSync.Api.Controllers
             // 验证用户是否存在以及密码是否正确
             if (user != null && await _userManager.CheckPasswordAsync(user, loginDto.Password))
             {
-                var token = GenerateJwtToken(user);
+                                var token = await GenerateJwtToken(user);
 
                 return Ok(token);
             }
@@ -81,14 +81,21 @@ namespace LunaArcSync.Api.Controllers
         }
 
         // --- 私有帮助方法，用于生成 JWT ---
-        private AuthResponseDto GenerateJwtToken(AppUser user)
+        private async Task<AuthResponseDto> GenerateJwtToken(AppUser user)
         {
             var authClaims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.Name, user.UserName!),
                 new Claim(ClaimTypes.NameIdentifier, user.Id), // 存储用户ID
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
+
+            // Get user roles and add them as claims
+            var userRoles = await _userManager.GetRolesAsync(user);
+            foreach (var userRole in userRoles)
+            {
+                authClaims.Add(new Claim(ClaimTypes.Role, userRole));
+            }
 
             var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
             var tokenExpiration = DateTime.Now.AddHours(3); // Token 有效期3小时

@@ -27,6 +27,7 @@ namespace LunaArcSync.Api.Controllers
             _pageRepository = pageRepository;
             _logger = logger;
         }
+    
 
         #region Core Page CRUD
 
@@ -40,12 +41,13 @@ namespace LunaArcSync.Api.Controllers
             if (pageSize > 100) pageSize = 100;
 
             var pagedPages = await _pageRepository.GetAllPagesAsync(userId, pageNumber, pageSize);
-            var pageDtos = pagedPages.Items.Select(d => new PageDto
+                        var pageDtos = pagedPages.Items.Select(d => new PageDto
             {
                 PageId = d.PageId,
                 Title = d.Title,
                 CreatedAt = d.CreatedAt,
-                UpdatedAt = d.UpdatedAt
+                UpdatedAt = d.UpdatedAt,
+                Order = d.Order // Map the Order property
             }).ToList();
 
             return Ok(new PagedResultDto<PageDto>(pageDtos, pagedPages.TotalCount, pagedPages.PageNumber, pagedPages.PageSize));
@@ -142,12 +144,13 @@ namespace LunaArcSync.Api.Controllers
             if (string.IsNullOrWhiteSpace(q)) return BadRequest("Search query cannot be empty.");
 
             var pagedPages = await _pageRepository.SearchPagesAsync(q, userId, pageNumber, pageSize);
-            var pageDtos = pagedPages.Items.Select(d => new PageDto
+                        var pageDtos = pagedPages.Items.Select(d => new PageDto
             {
                 PageId = d.PageId,
                 Title = d.Title,
                 CreatedAt = d.CreatedAt,
-                UpdatedAt = d.UpdatedAt
+                UpdatedAt = d.UpdatedAt,
+                Order = d.Order // Map the Order property
             }).ToList();
 
             return Ok(new PagedResultDto<PageDto>(pageDtos, pagedPages.TotalCount, pagedPages.PageNumber, pagedPages.PageSize));
@@ -176,6 +179,118 @@ namespace LunaArcSync.Api.Controllers
 
         #endregion
 
+        #region Page Ordering
+
+        [HttpPost("/api/documents/{documentId}/pages/reorder/set")]
+        public async Task<IActionResult> SetPageOrder(Guid documentId, [FromBody] PageReorderSetDto reorderDto)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            // Validation: "同page异号" (Same page, different order number)
+            var duplicatePageIds = reorderDto.PageOrders
+                .GroupBy(p => p.PageId)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+            if (duplicatePageIds.Any())
+            {
+                return BadRequest($"Duplicate PageIds found in the request: {string.Join(", ", duplicatePageIds)}");
+            }
+
+            // Validation: "异page同号" (Different page, same order number)
+            var duplicateOrders = reorderDto.PageOrders
+                .GroupBy(p => p.Order)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+            if (duplicateOrders.Any())
+            {
+                return BadRequest($"Duplicate Order numbers found in the request: {string.Join(", ", duplicateOrders)}");
+            }
+
+            // Convert list to dictionary for easier lookup in repository
+            var pageOrdersDict = reorderDto.PageOrders.ToDictionary(p => p.PageId, p => p.Order);
+
+            var success = await _pageRepository.UpdatePageOrdersAsync(documentId, userId, pageOrdersDict);
+
+            if (!success)
+            {
+                return BadRequest("Failed to update page orders. Ensure all pages belong to the specified document and user.");
+            }
+
+            return NoContent();
+        }
+
+        [HttpPost("/api/documents/{documentId}/pages/reorder/insert")]
+        public async Task<IActionResult> InsertPageOrder(Guid documentId, [FromBody] PageReorderInsertDto insertDto)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            // Get all pages for the document, ordered by current order
+            var documentPages = await _pageRepository.GetPagesByDocumentIdAsync(documentId, userId); // Need to add this method to IPageRepository
+
+            if (documentPages == null || !documentPages.Any())
+            {
+                return NotFound("Document not found or has no pages.");
+            }
+
+            var targetPage = documentPages.FirstOrDefault(p => p.PageId == insertDto.PageId);
+            if (targetPage == null)
+            {
+                return NotFound($"Page with ID {insertDto.PageId} not found in document {documentId}.");
+            }
+
+            // Ensure NewOrder is within valid range (1 to maxOrder + 1)
+            var maxOrder = documentPages.Max(p => p.Order);
+            if (insertDto.NewOrder < 1 || insertDto.NewOrder > maxOrder + 1)
+            {
+                return BadRequest($"NewOrder must be between 1 and {maxOrder + 1}.");
+            }
+
+            // Create a dictionary to hold the new orders
+            var newPageOrders = new Dictionary<Guid, int>();
+            var currentOrder = 1;
+
+            // Iterate through existing pages and assign new orders
+            foreach (var page in documentPages.OrderBy(p => p.Order))
+            {
+                if (currentOrder == insertDto.NewOrder)
+                {
+                    // Insert the target page at the desired position
+                    newPageOrders[targetPage.PageId] = currentOrder;
+                    currentOrder++;
+                }
+
+                if (page.PageId != targetPage.PageId) // Skip the target page if it's already handled
+                {
+                    newPageOrders[page.PageId] = currentOrder;
+                    currentOrder++;
+                }
+            }
+
+            // If the target page was inserted at the very end
+            if (!newPageOrders.ContainsKey(targetPage.PageId))
+            {
+                newPageOrders[targetPage.PageId] = currentOrder;
+            }
+
+
+            var success = await _pageRepository.UpdatePageOrdersAsync(documentId, userId, newPageOrders);
+
+            if (!success)
+            {
+                return BadRequest("Failed to update page orders during insertion.");
+            }
+
+            return NoContent();
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private string? GetCurrentUserId()
@@ -198,5 +313,30 @@ namespace LunaArcSync.Api.Controllers
         }
 
         #endregion
+
+
+        [HttpGet("unassigned")]
+        public async Task<ActionResult<List<PageDto>>> GetUnassignedPages()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            // 我们需要在 IPageRepository 中添加一个新方法
+            var unassignedPages = await _pageRepository.GetUnassignedPagesAsync(userId);
+
+            var pageDtos = unassignedPages.Select(p => new PageDto
+            {
+                PageId = p.PageId,
+                Title = p.Title,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt
+            }).ToList();
+
+            return Ok(pageDtos);
+        }
+
     }
+
 }
+
+    

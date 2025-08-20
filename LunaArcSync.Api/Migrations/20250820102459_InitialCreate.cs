@@ -6,18 +6,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LunaArcSync.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class AddIdentityAndUserPageRelation : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "UserId",
-                table: "Pages",
-                type: "TEXT",
-                nullable: false,
-                defaultValue: "");
-
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
@@ -55,6 +48,24 @@ namespace LunaArcSync.Api.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Jobs",
+                columns: table => new
+                {
+                    JobId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Type = table.Column<int>(type: "INTEGER", nullable: false),
+                    Status = table.Column<int>(type: "INTEGER", nullable: false),
+                    AssociatedPageId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    SubmittedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    StartedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    CompletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    ErrorMessage = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Jobs", x => x.JobId);
                 });
 
             migrationBuilder.CreateTable(
@@ -163,10 +174,51 @@ namespace LunaArcSync.Api.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Pages_UserId",
-                table: "Pages",
-                column: "UserId");
+            migrationBuilder.CreateTable(
+                name: "Pages",
+                columns: table => new
+                {
+                    PageId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Title = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    CurrentVersionId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UserId = table.Column<string>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Pages", x => x.PageId);
+                    table.ForeignKey(
+                        name: "FK_Pages_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Versions",
+                columns: table => new
+                {
+                    VersionId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    VersionNumber = table.Column<int>(type: "INTEGER", nullable: false),
+                    Message = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    ImagePath = table.Column<string>(type: "TEXT", nullable: false),
+                    OcrData = table.Column<string>(type: "TEXT", nullable: true),
+                    OcrDataNormalized = table.Column<string>(type: "TEXT", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    PageId = table.Column<Guid>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Versions", x => x.VersionId);
+                    table.ForeignKey(
+                        name: "FK_Versions_Pages_PageId",
+                        column: x => x.PageId,
+                        principalTable: "Pages",
+                        principalColumn: "PageId",
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -205,22 +257,20 @@ namespace LunaArcSync.Api.Migrations
                 column: "NormalizedUserName",
                 unique: true);
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_Pages_AspNetUsers_UserId",
+            migrationBuilder.CreateIndex(
+                name: "IX_Pages_UserId",
                 table: "Pages",
-                column: "UserId",
-                principalTable: "AspNetUsers",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Versions_PageId",
+                table: "Versions",
+                column: "PageId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Pages_AspNetUsers_UserId",
-                table: "Pages");
-
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 
@@ -237,18 +287,19 @@ namespace LunaArcSync.Api.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "Jobs");
+
+            migrationBuilder.DropTable(
+                name: "Versions");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
+                name: "Pages");
+
+            migrationBuilder.DropTable(
                 name: "AspNetUsers");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Pages_UserId",
-                table: "Pages");
-
-            migrationBuilder.DropColumn(
-                name: "UserId",
-                table: "Pages");
         }
     }
 }

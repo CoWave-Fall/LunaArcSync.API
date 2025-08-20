@@ -67,6 +67,23 @@ namespace LunaArcSync.Api.Core.Interfaces
 
         Task<Core.Entities.Version?> GetVersionByIdAsync(Guid versionId);
 
+        Task<List<Page>> GetUnassignedPagesAsync(string userId);
 
+        /// <summary>
+        /// Updates the order of multiple pages within a document.
+        /// </summary>
+        /// <param name="documentId">The ID of the document.</param>
+        /// <param name="userId">The ID of the user.</param>
+        /// <param name="pageOrders">A dictionary where key is PageId and value is the new Order.</param>
+        /// <returns>True if successful, false otherwise.</returns>
+        Task<bool> UpdatePageOrdersAsync(Guid documentId, string userId, Dictionary<Guid, int> pageOrders);
+
+        /// <summary>
+        /// Gets all pages for a specific document, ensuring they belong to the user.
+        /// </summary>
+        /// <param name="documentId">The ID of the document.</param>
+        /// <param name="userId">The ID of the user.</param>
+        /// <returns>A list of pages belonging to the document and user.</returns>
+        Task<List<Page>> GetPagesByDocumentIdAsync(Guid documentId, string userId);
     }
 }

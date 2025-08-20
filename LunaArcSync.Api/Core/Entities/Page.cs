@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LunaArcSync.Api.Core.Entities
@@ -24,10 +24,19 @@ namespace LunaArcSync.Api.Core.Entities
         [Required]
         public string UserId { get; set; } = string.Empty;
 
+        // 外键，关联到包含此页面的文档
+        public Guid? DocumentId { get; set; } // 可以为空，表示页面尚未被分配到任何文档
+
+        // 导航属性
+        public virtual Document? Document { get; set; }
+
         // 导航属性，表示此文档属于哪个用户
         public AppUser? User { get; set; }
         // --- 结束添加 ---
 
-        
+        /// <summary>
+        /// 用于排序的序号，数字越小越靠前。
+        /// </summary>
+        public int Order { get; set; } = 0;
     }
 }

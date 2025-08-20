@@ -14,35 +14,37 @@ using LunaArcSync.Api.Core.Interfaces;
 using LunaArcSync.Api.Infrastructure.Data;
 using LunaArcSync.Api.Infrastructure.FileStorage;
 using LunaArcSync.Api.Infrastructure.Services;
+using LunaArcSync.Api.DTOs;
+using LunaArcSync.Api.Core.Constants;
 using System;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. ÅäÖÃ·şÎñ (ÒÀÀµ×¢ÈëÈİÆ÷) ---
+// --- 1. Ã· (×¢) ---
 
-// +++ Ìí¼Ó CORS ·şÎñ +++
+// +++  CORS  +++
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: MyAllowSpecificOrigins,
                       policy =>
                       {
-                          // ÔÚ¿ª·¢»·¾³ÖĞ£¬ÔÊĞíÈÎºÎÀ´Ô´¡¢ÈÎºÎ·½·¨¡¢ÈÎºÎÇëÇóÍ·
+                          // Ú¿Ğ£ÎºÔ´ÎºÎ·ÎºÍ·
                           policy.AllowAnyOrigin()
                                 .AllowAnyMethod()
                                 .AllowAnyHeader();
                       });
 });
 
-// 1.1 ×¢²áÊı¾İ¿âÉÏÏÂÎÄ (DbContext)
+// 1.1 ×¢İ¿ (DbContext)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 1.2 ÅäÖÃ ASP.NET Core Identity
+// 1.2  ASP.NET Core Identity
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {
-    // ÔÚÕâÀïÅäÖÃÃÜÂë²ßÂÔ
+    // 
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = false;
@@ -52,7 +54,7 @@ builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// 1.3 ÅäÖÃ JWT (JSON Web Token) ÈÏÖ¤
+// 1.3  JWT (JSON Web Token) Ö¤
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -62,35 +64,35 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     options.SaveToken = true;
-    options.RequireHttpsMetadata = false; // ÔÚ¿ª·¢»·¾³ÖĞ¿ÉÒÔÉèÎª false£¬Éú²ú»·¾³Ó¦Îª true
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment(); // Set to true in production
     options.TokenValidationParameters = new TokenValidationParameters()
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidAudience = builder.Configuration["JWT:ValidAudience"],
         ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
-        // ÃÜÔ¿ÊÇÑéÖ¤ Token Ç©ÃûµÄ¹Ø¼ü
+        // Ô¿Ö¤ Token Ç©Ä¹Ø¼
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
     };
 });
 
-// 1.4 ×¢²á¿ØÖÆÆ÷ºÍ API Ïà¹Ø·şÎñ
+// 1.4 ×¢ API Ø·
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    // 1. ¶¨Òå°²È«·½°¸ (Security Scheme)
+    // 1. å°²È« (Security Scheme)
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
-        Name = "Authorization", // ÒªÌí¼Óµ½ÇëÇóÍ·ÖĞµÄ key
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http, // ÀàĞÍÊÇ Http
-        Scheme = "Bearer", // ÈÏÖ¤·½°¸ÊÇ Bearer
-        BearerFormat = "JWT", // Bearer µÄ¸ñÊ½ÊÇ JWT
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header, // Token µÄÎ»ÖÃÔÚÇëÇóÍ·
-        Description = "ÇëÊäÈë Bearer Token, ¸ñÊ½Îª: Bearer {token}"
+        Name = "Authorization", // ÒªÓµÍ·Ğµ key
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http, //  Http
+        Scheme = "Bearer", // Ö¤ Bearer
+        BearerFormat = "JWT", // Bearer Ä¸Ê½ JWT
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header, // Token Î»Í·
+        Description = " Bearer Token, Ê½Îª: Bearer {token}"
     });
 
-    // 2. Ìí¼ÓÈ«¾Ö°²È«ÒªÇó (Security Requirement)
+    // 2. È«Ö°È«Òª (Security Requirement)
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
@@ -99,43 +101,44 @@ builder.Services.AddSwaggerGen(options =>
                 Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
                     Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer" // ÕâÀïµÄ Id ±ØĞëÓëÉÏÃæ AddSecurityDefinition ÖĞµÄµÚÒ»¸ö²ÎÊıÒ»ÖÂ
+                    Id = "Bearer" //  Id  AddSecurityDefinition ĞµÄµÒ»Ò»
                 }
             },
             new string[] {}
         }
     });
 });
-// 1.5 ×¢²á×Ô¶¨ÒåµÄÓ¦ÓÃ·şÎñ
+// 1.5 ×¢Ô¶Ó¦Ã·
 // Repository
 builder.Services.AddScoped<IPageRepository, PageRepository>();
+builder.Services.AddScoped<IDocumentRepository, DocumentRepository>(); 
 
-// ºËĞÄ·şÎñ
+// Ä·
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IOcrService, TesseractOcrService>();
 builder.Services.AddScoped<IImageProcessingService, OpenCvImageProcessingService>();
 
-// ºóÌ¨ÈÎÎñ¶ÓÁĞ (Singleton ±£Ö¤È«¾ÖÎ¨Ò»)
+// Ì¨ (Singleton Ö¤È«Î¨Ò»)
 builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
 
-// ÍĞ¹ÜµÄºóÌ¨¹¤×÷·şÎñ
+// Ğ¹ÜµÄºÌ¨
 builder.Services.AddHostedService<QueuedHostedService>();
 
 
-// --- 2. ¹¹½¨Ó¦ÓÃ³ÌĞò ---
+// --- 2. Ó¦Ã³ ---
 var app = builder.Build();
 
 
-// --- 3. ÅäÖÃ HTTP ÇëÇó´¦Àí¹ÜµÀ (ÖĞ¼ä¼ş) ---
+// --- 3.  HTTP Üµ (Ğ¼) ---
 
-// 3.1 ÔÚ³ÌĞòÆô¶¯Ê±×Ô¶¯Ó¦ÓÃÊı¾İ¿âÇ¨ÒÆ
+// 3.1 Ú³Ê±Ô¶Ó¦İ¿Ç¨
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
-        // È·±£Êı¾İ¿â±»´´½¨²¢Ó¦ÓÃËùÓĞ¹ÒÆğµÄÇ¨ÒÆ
+        // È·İ¿â±»Ó¦Ğ¹Ç¨
         context.Database.Migrate();
     }
     catch (Exception ex)
@@ -145,33 +148,85 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 3.2 ÅäÖÃ¿ª·¢»·¾³ºÍÉú²ú»·¾³µÄÖĞ¼ä¼ş
+// 3.2 Ã¿Ğ¼
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    // ÔÚ¿ª·¢»·¾³ÖĞ£¬ÏÔÊ¾ÏêÏ¸µÄÒì³£Ò³Ãæ
+    // Ú¿Ğ£Ê¾Ï¸ì³£Ò³
     app.UseDeveloperExceptionPage();
 }
 
-// 3.3 ºËĞÄÖĞ¼ä¼ş£¨Ë³Ğò·Ç³£ÖØÒª£¡£©
+// 3.3 Ğ¼Ë³Ç³Òª
 app.UseHttpsRedirection();
 
-// ÆôÓÃÂ·ÓÉ
+// Â·
 app.UseRouting();
 
-// +++ ÆôÓÃ CORS ÖĞ¼ä¼ş +++
+// +++  CORS Ğ¼ +++
 app.UseCors(MyAllowSpecificOrigins);
 
-// ÆôÓÃÈÏÖ¤ÖĞ¼ä¼ş (±ØĞëÔÚ UseAuthorization Ö®Ç°)
+// Ö¤Ğ¼ ( UseAuthorization Ö®Ç°)
 app.UseAuthentication();
 
-// ÆôÓÃÊÚÈ¨ÖĞ¼ä¼ş
+// È¨Ğ¼
 app.UseAuthorization();
 
-// ½«ÇëÇóÓ³Éäµ½¿ØÖÆÆ÷
+// Ó³äµ½
 app.MapControllers();
 
 
-// --- 4. ÔËĞĞÓ¦ÓÃ³ÌĞò ---
+// --- 4. Ó¦Ã³ ---
 app.Run();
+
+async Task SeedData(IServiceProvider serviceProvider)
+{
+    var userManager = serviceProvider.GetRequiredService<UserManager<AppUser>>();
+    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+    // Seed Roles
+    string[] roleNames = { UserRoles.Admin, UserRoles.User };
+    foreach (var roleName in roleNames)
+    {
+        if (!await roleManager.RoleExistsAsync(roleName))
+        {
+            await roleManager.CreateAsync(new IdentityRole(roleName));
+            logger.LogInformation("Role '{RoleName}' created.", roleName);
+        }
+    }
+
+    // Seed Default Admin User
+    var defaultAdminEmail = "admin@example.com";
+    var defaultAdminPassword = "admin"; // Consider using a stronger default password in production
+
+    var adminUser = await userManager.FindByEmailAsync(defaultAdminEmail);
+    if (adminUser == null)
+    {
+        adminUser = new AppUser { UserName = defaultAdminEmail, Email = defaultAdminEmail };
+        var result = await userManager.CreateAsync(adminUser, defaultAdminPassword);
+        if (result.Succeeded)
+        {
+            logger.LogInformation("Default admin user '{Email}' created.", defaultAdminEmail);
+            if (!await userManager.IsInRoleAsync(adminUser, UserRoles.Admin))
+            {
+                await userManager.AddToRoleAsync(adminUser, UserRoles.Admin);
+                logger.LogInformation("Default admin user '{Email}' assigned to '{Role}' role.", defaultAdminEmail, UserRoles.Admin);
+            }
+        }
+        else
+        {
+            logger.LogError("Failed to create default admin user '{Email}': {Errors}", defaultAdminEmail, string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+    }
+    else
+    {
+        logger.LogInformation("Default admin user '{Email}' already exists.", defaultAdminEmail);
+        // Ensure admin user has the Admin role if they somehow don't
+        if (!await userManager.IsInRoleAsync(adminUser, UserRoles.Admin))
+        {
+            await userManager.AddToRoleAsync(adminUser, UserRoles.Admin);
+            logger.LogInformation("Existing admin user '{Email}' assigned to '{Role}' role.", defaultAdminEmail, UserRoles.Admin);
+        }
+    }
+}

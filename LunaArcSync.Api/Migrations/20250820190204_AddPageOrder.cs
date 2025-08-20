@@ -5,24 +5,25 @@
 namespace LunaArcSync.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class AddNormalizedOcrColumn : Migration
+    public partial class AddPageOrder : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "OcrDataNormalized",
-                table: "Versions",
-                type: "TEXT",
-                nullable: true);
+            migrationBuilder.AddColumn<int>(
+                name: "Order",
+                table: "Pages",
+                type: "INTEGER",
+                nullable: false,
+                defaultValue: 0);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "OcrDataNormalized",
-                table: "Versions");
+                name: "Order",
+                table: "Pages");
         }
     }
 }

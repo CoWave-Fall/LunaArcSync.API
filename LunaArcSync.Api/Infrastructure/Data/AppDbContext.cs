@@ -12,8 +12,10 @@ namespace LunaArcSync.Api.Infrastructure.Data
         }
 
         public DbSet<Page> Pages { get; set; }
+        public DbSet<Document> Documents { get; set; }
         public DbSet<Core.Entities.Version> Versions { get; set; }
         public DbSet<Job> Jobs { get; set; }
+        public DbSet<Tag> Tags { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -26,5 +28,7 @@ namespace LunaArcSync.Api.Infrastructure.Data
                 .WithOne(d => d.User)      // 一个文档有一个用户
                 .HasForeignKey(d => d.UserId); // 外键是 UserId
         }
+
+
     }
 }
