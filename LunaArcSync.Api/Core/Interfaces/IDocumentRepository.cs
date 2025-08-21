@@ -38,7 +38,7 @@ namespace LunaArcSync.Api.Core.Interfaces
         /// </summary>
         /// <param name="document">The document entity with updated values.</param>
         /// <returns>The updated document entity.</returns>
-        Task<Document> UpdateDocumentAsync(Guid documentId, string title, List<string>? tags, string userId);
+        Task<Document?> UpdateDocumentAsync(Guid documentId, string title, List<string>? tags, string userId);
 
 
         /// <summary>
@@ -81,5 +81,12 @@ namespace LunaArcSync.Api.Core.Interfaces
         /// <param name="documentId">The ID of the document.</param>
         /// <returns>The Document entity with its Pages and User collection, or null if not found.</returns>
         Task<Document?> GetDocumentWithPagesByIdForAdminAsync(Guid documentId);
+
+        /// <summary>
+        /// Asynchronously gets all documents for a specific user, including their pages and tags.
+        /// </summary>
+        /// <param name="userId">The ID of the user.</param>
+        /// <returns>A list of Document entities with their related data.</returns>
+        Task<List<Core.Entities.Document>> GetAllUserDocumentsWithDetailsAsync(string userId);
     }
     }

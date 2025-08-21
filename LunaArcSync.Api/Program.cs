@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http; // ADDED THIS LINE
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -72,7 +73,7 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["JWT:ValidAudience"],
         ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
         // Կ֤ Token ǩĹؼ
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]!))
     };
 });
 
@@ -81,6 +82,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+    options.OperationFilter<SwaggerFileOperationFilter>(); // ADDED THIS LINE
+
     // 1. 尲ȫ (Security Scheme)
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
@@ -140,6 +143,7 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<AppDbContext>();
         // ȷݿⱻӦйǨ
         context.Database.Migrate();
+        await SeedData(services);
     }
     catch (Exception ex)
     {
@@ -198,7 +202,7 @@ async Task SeedData(IServiceProvider serviceProvider)
 
     // Seed Default Admin User
     var defaultAdminEmail = "admin@example.com";
-    var defaultAdminPassword = "admin"; // Consider using a stronger default password in production
+    var defaultAdminPassword = "admin233"; // Consider using a stronger default password in production
 
     var adminUser = await userManager.FindByEmailAsync(defaultAdminEmail);
     if (adminUser == null)

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -40,7 +40,21 @@ namespace LunaArcSync.Api.Controllers
             var userId = GetCurrentUserId();
             if (userId == null) return Unauthorized();
 
-            var pagedDocs = await _documentRepository.GetAllDocumentsAsync(userId, pageNumber, pageSize);
+            var currentUser = await _userManager.FindByIdAsync(userId);
+            var isAdmin = currentUser != null && await _userManager.IsInRoleAsync(currentUser, UserRoles.Admin);
+
+            PagedResult<Core.Entities.Document> pagedDocs;
+
+            if (isAdmin)
+            {
+                // Admin can see all documents
+                pagedDocs = await _documentRepository.GetAllDocumentsForAdminAsync(pageNumber, pageSize);
+            }
+            else
+            {
+                // Regular user can only see their own documents
+                pagedDocs = await _documentRepository.GetAllDocumentsAsync(userId, pageNumber, pageSize);
+            }
 
             var docDtos = pagedDocs.Items.Select(d => new DocumentDto
             {
@@ -48,7 +62,9 @@ namespace LunaArcSync.Api.Controllers
                 Title = d.Title,
                 CreatedAt = d.CreatedAt,
                 UpdatedAt = d.UpdatedAt,
-                PageCount = d.Pages.Count // 从实体中获取页面数量
+                PageCount = d.Pages.Count, // 从实体中获取页面数量
+                OwnerEmail = isAdmin ? d.User?.Email : null, // Populate OwnerEmail for admin
+                Tags = d.Tags.Select(t => t.Name).ToList() // ADDED: Map Tags
             }).ToList();
 
             return Ok(new PagedResultDto<DocumentDto>(docDtos, pagedDocs.TotalCount, pageNumber, pageSize));
@@ -72,14 +88,14 @@ namespace LunaArcSync.Api.Controllers
             if (userId == null) return Unauthorized();
 
             var currentUser = await _userManager.FindByIdAsync(userId);
-            var isAdmin = await _userManager.IsInRoleAsync(currentUser, UserRoles.Admin);
+            var isAdmin = currentUser != null && await _userManager.IsInRoleAsync(currentUser, UserRoles.Admin);
 
             Core.Entities.Document? document;
 
             if (isAdmin)
             {
                 // Admin can see any document
-                document = await _documentRepository.GetDocumentWithPagesByIdForAdminAsync(id); // New method
+                document = await _documentRepository.GetDocumentWithPagesByIdForAdminAsync(id);
             }
             else
             {
@@ -198,6 +214,21 @@ namespace LunaArcSync.Api.Controllers
             }
 
             return NoContent();
+        }
+
+        [HttpGet("my-data-export")]
+        public async Task<IActionResult> ExportMyData()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var userDocuments = await _documentRepository.GetAllUserDocumentsWithDetailsAsync(userId);
+
+            // Serialize to JSON
+            var jsonString = System.Text.Json.JsonSerializer.Serialize(userDocuments, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            var fileName = $"user_data_{userId}.json";
+
+            return File(System.Text.Encoding.UTF8.GetBytes(jsonString), "application/json", fileName);
         }
     }
 }

@@ -97,7 +97,7 @@ namespace LunaArcSync.Api.Controllers
                 authClaims.Add(new Claim(ClaimTypes.Role, userRole));
             }
 
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]!));;
             var tokenExpiration = DateTime.Now.AddHours(3); // Token 有效期3小时
 
             var token = new JwtSecurityToken(
@@ -113,7 +113,7 @@ namespace LunaArcSync.Api.Controllers
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 Expiration = token.ValidTo,
                 UserId = user.Id,
-                Email = user.Email
+                Email = user.Email!
             };
         }
     }
