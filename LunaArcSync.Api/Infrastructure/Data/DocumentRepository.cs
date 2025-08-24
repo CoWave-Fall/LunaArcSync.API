@@ -1,7 +1,7 @@
-using LunaArcSync.Api.Controllers;
 using LunaArcSync.Api.Core.Entities;
 using LunaArcSync.Api.Core.Interfaces;
 using LunaArcSync.Api.Core.Models;
+using LunaArcSync.Api.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -14,21 +14,43 @@ namespace LunaArcSync.Api.Infrastructure.Data
     public class DocumentRepository : IDocumentRepository
     {
         private readonly AppDbContext _context;
-        private readonly ILogger<DocumentsController> _logger;
+        private readonly ILogger<DocumentRepository> _logger;
 
-        public DocumentRepository(AppDbContext context, ILogger<DocumentsController> logger)
+        public DocumentRepository(AppDbContext context, ILogger<DocumentRepository> logger)
         {
             _context = context;
             _logger = logger;
         }
 
-        public async Task<PagedResult<Document>> GetAllDocumentsAsync(string userId, int pageNumber, int pageSize)
+        public async Task<PagedResult<Document>> GetAllDocumentsAsync(string userId, int pageNumber, int pageSize, string sortBy, List<string> tags)
         {
             var query = _context.Documents
-                .Where(d => d.UserId == userId)
-                .Include(d => d.Pages)
-                .Include(d => d.Tags) // ADDED: Include Tags
-                .OrderByDescending(d => d.UpdatedAt);
+                .AsNoTracking()
+                .Where(d => d.UserId == userId);
+
+            query = ApplyFiltering(query, tags);
+            query = ApplySorting(query, sortBy);
+
+            query = query.Include(d => d.Pages).Include(d => d.Tags);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<Document>(items, totalCount, pageNumber, pageSize);
+        }
+
+        public async Task<PagedResult<Document>> GetAllDocumentsForAdminAsync(int pageNumber, int pageSize, string sortBy, List<string> tags)
+        {
+            var query = _context.Documents.AsNoTracking();
+
+            query = ApplyFiltering(query, tags);
+            query = ApplySorting(query, sortBy);
+
+            query = query.Include(d => d.Pages).Include(d => d.User).Include(d => d.Tags);
 
             var totalCount = await query.CountAsync();
 
@@ -56,14 +78,6 @@ namespace LunaArcSync.Api.Infrastructure.Data
             document.UpdatedAt = DateTime.UtcNow;
 
             await _context.Documents.AddAsync(document);
-            await _context.SaveChangesAsync();
-            return document;
-        }
-
-        public async Task<Document> UpdateDocumentAsync(Document document)
-        {
-            document.UpdatedAt = DateTime.UtcNow;
-            _context.Documents.Update(document);
             await _context.SaveChangesAsync();
             return document;
         }
@@ -164,7 +178,7 @@ namespace LunaArcSync.Api.Infrastructure.Data
             return true;
         }
 
-        public async Task<LunaArcSync.Api.DTOs.UserStatsDto> GetUserStatsAsync(string userId)
+        public async Task<UserStatsDto> GetUserStatsAsync(string userId)
         {
             var totalDocuments = await _context.Documents
                                             .Where(d => d.UserId == userId)
@@ -174,29 +188,11 @@ namespace LunaArcSync.Api.Infrastructure.Data
                                         .Where(p => p.UserId == userId)
                                         .CountAsync();
 
-            return new LunaArcSync.Api.DTOs.UserStatsDto
+            return new UserStatsDto
             {
                 TotalDocuments = totalDocuments,
                 TotalPages = totalPages
             };
-        }
-
-        public async Task<PagedResult<Document>> GetAllDocumentsForAdminAsync(int pageNumber, int pageSize)
-        {
-            var query = _context.Documents
-                .Include(d => d.Pages)
-                .Include(d => d.User)
-                .Include(d => d.Tags)
-                .OrderByDescending(d => d.UpdatedAt);
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<Document>(items, totalCount, pageNumber, pageSize);
         }
 
         public async Task<Document?> GetDocumentWithPagesByIdForAdminAsync(Guid documentId)
@@ -209,7 +205,7 @@ namespace LunaArcSync.Api.Infrastructure.Data
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<List<Core.Entities.Document>> GetAllUserDocumentsWithDetailsAsync(string userId)
+        public async Task<List<Document>> GetAllUserDocumentsWithDetailsAsync(string userId)
         {
             return await _context.Documents
                                 .Where(d => d.UserId == userId)
@@ -218,6 +214,39 @@ namespace LunaArcSync.Api.Infrastructure.Data
                                 .Include(d => d.User)
                                 .OrderByDescending(d => d.UpdatedAt)
                                 .ToListAsync();
+        }
+
+        public async Task<List<string>> GetAllTagsAsync()
+        {
+            return await _context.Tags
+                .AsNoTracking()
+                .Select(t => t.Name)
+                .Distinct()
+                .OrderBy(t => t)
+                .ToListAsync();
+        }
+
+        private IQueryable<Document> ApplySorting(IQueryable<Document> query, string sortBy)
+        {
+            return sortBy?.ToLower() switch
+            {
+                "date_asc" => query.OrderBy(d => d.UpdatedAt),
+                "title_asc" => query.OrderBy(d => d.Title),
+                "title_desc" => query.OrderByDescending(d => d.Title),
+                _ => query.OrderByDescending(d => d.UpdatedAt), // Default case
+            };
+        }
+
+        private IQueryable<Document> ApplyFiltering(IQueryable<Document> query, List<string> tags)
+        {
+            if (tags != null && tags.Any())
+            {
+                foreach (var tag in tags.Where(t => !string.IsNullOrWhiteSpace(t)))
+                {
+                    query = query.Where(d => d.Tags.Any(t => t.Name == tag));
+                }
+            }
+            return query;
         }
     }
 }

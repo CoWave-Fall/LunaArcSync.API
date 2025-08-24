@@ -167,14 +167,18 @@ namespace LunaArcSync.Api.Controllers
             var page = await _pageRepository.GetPageByIdAsync(id, userId);
             if (page == null) return NotFound();
 
-            // 验证目标版本存在且属于该文档 (Repository 中没有这个方法，所以在 Controller 中验证)
-            var versionExists = await _pageRepository.VersionExistsAsync(revertDto.TargetVersionId);
-            if (!versionExists) return BadRequest("Target version not found.");
+            // 验证目标版本存在且属于该文档
+            var versionToRevert = await _pageRepository.GetVersionByIdAsync(revertDto.TargetVersionId);
+            if (versionToRevert == null || versionToRevert.PageId != id)
+            {
+                return BadRequest("Target version not found or does not belong to this page.");
+            }
 
             var success = await _pageRepository.SetCurrentVersionAsync(id, revertDto.TargetVersionId);
-            if (!success) return StatusCode(500, "An unexpected error occurred.");
+            if (!success) return StatusCode(500, "An unexpected error occurred while reverting.");
 
-            return NoContent();
+            // 返回包含新版本号的对象
+            return Ok(new { newVersionNumber = versionToRevert.VersionNumber });
         }
 
         #endregion

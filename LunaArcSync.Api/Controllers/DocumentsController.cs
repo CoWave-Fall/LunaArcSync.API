@@ -8,9 +8,12 @@ using System;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using LunaArcSync.Api.Core.Entities; // Assuming AppUser is in this namespace
-using LunaArcSync.Api.Core.Constants; // Assuming UserRoles is in this namespace
-using LunaArcSync.Api.Core.Models; // Assuming PagedResultDto is in this namespace
+using LunaArcSync.Api.Core.Entities;
+using LunaArcSync.Api.Core.Constants;
+using LunaArcSync.Api.Core.Models;
+using Microsoft.Extensions.Caching.Memory;
+using LunaArcSync.Api.BackgroundTasks;
+using System.Collections.Generic;
 
 namespace LunaArcSync.Api.Controllers
 {
@@ -19,26 +22,36 @@ namespace LunaArcSync.Api.Controllers
     [Route("api/[controller]")]
     public class DocumentsController : ControllerBase
     {
-        // 我们需要一个新的仓储接口 IDocumentRepository，您需要在后端自行创建它和它的实现
         private readonly IDocumentRepository _documentRepository;
         private readonly ILogger<DocumentsController> _logger;
-        private readonly UserManager<AppUser> _userManager; // Declare UserManager
+        private readonly UserManager<AppUser> _userManager;
+        private readonly IMemoryCache _cache;
 
         public DocumentsController(
             IDocumentRepository documentRepository,
             ILogger<DocumentsController> logger,
-            UserManager<AppUser> userManager) 
+            UserManager<AppUser> userManager,
+            IMemoryCache cache)
         {
             _documentRepository = documentRepository;
             _logger = logger;
             _userManager = userManager;
+            _cache = cache;
         }
 
         [HttpGet]
-        public async Task<ActionResult<PagedResultDto<DocumentDto>>> GetDocuments([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<PagedResultDto<DocumentDto>>> GetDocuments(
+            [FromQuery] int pageNumber = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string sortBy = "date_desc", 
+            [FromQuery] string? tags = null)
         {
             var userId = GetCurrentUserId();
             if (userId == null) return Unauthorized();
+
+            var tagList = string.IsNullOrEmpty(tags) 
+                ? new List<string>() 
+                : tags.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
 
             var currentUser = await _userManager.FindByIdAsync(userId);
             var isAdmin = currentUser != null && await _userManager.IsInRoleAsync(currentUser, UserRoles.Admin);
@@ -47,13 +60,11 @@ namespace LunaArcSync.Api.Controllers
 
             if (isAdmin)
             {
-                // Admin can see all documents
-                pagedDocs = await _documentRepository.GetAllDocumentsForAdminAsync(pageNumber, pageSize);
+                pagedDocs = await _documentRepository.GetAllDocumentsForAdminAsync(pageNumber, pageSize, sortBy, tagList);
             }
             else
             {
-                // Regular user can only see their own documents
-                pagedDocs = await _documentRepository.GetAllDocumentsAsync(userId, pageNumber, pageSize);
+                pagedDocs = await _documentRepository.GetAllDocumentsAsync(userId, pageNumber, pageSize, sortBy, tagList);
             }
 
             var docDtos = pagedDocs.Items.Select(d => new DocumentDto
@@ -62,12 +73,29 @@ namespace LunaArcSync.Api.Controllers
                 Title = d.Title,
                 CreatedAt = d.CreatedAt,
                 UpdatedAt = d.UpdatedAt,
-                PageCount = d.Pages.Count, // 从实体中获取页面数量
-                OwnerEmail = isAdmin ? d.User?.Email : null, // Populate OwnerEmail for admin
-                Tags = d.Tags.Select(t => t.Name).ToList() // ADDED: Map Tags
+                PageCount = d.Pages.Count,
+                OwnerEmail = isAdmin ? d.User?.Email : null,
+                Tags = d.Tags.Select(t => t.Name).ToList()
             }).ToList();
 
             return Ok(new PagedResultDto<DocumentDto>(docDtos, pagedDocs.TotalCount, pageNumber, pageSize));
+        }
+
+        [HttpGet("tags")]
+        public async Task<ActionResult<List<string>>> GetAllTags()
+        {
+            var cacheKey = CacheWarmingService.GetTagsCacheKey();
+            if (!_cache.TryGetValue(cacheKey, out List<string>? tags) || tags == null)
+            {
+                _logger.LogInformation("Tags cache miss. Fetching from repository.");
+                tags = await _documentRepository.GetAllTagsAsync();
+                _cache.Set(cacheKey, tags, TimeSpan.FromDays(1));
+            }
+            else
+            {
+                _logger.LogInformation("Tags cache hit.");
+            }
+            return Ok(tags);
         }
 
         [HttpGet("stats")]
@@ -94,12 +122,10 @@ namespace LunaArcSync.Api.Controllers
 
             if (isAdmin)
             {
-                // Admin can see any document
                 document = await _documentRepository.GetDocumentWithPagesByIdForAdminAsync(id);
             }
             else
             {
-                // Regular user can only see their own document
                 document = await _documentRepository.GetDocumentWithPagesByIdAsync(id, userId);
             }
 
@@ -113,17 +139,17 @@ namespace LunaArcSync.Api.Controllers
                 UpdatedAt = document.UpdatedAt,
                 Tags = document.Tags.Select(t => t.Name).ToList(),
                 Pages = document.Pages
-                    .OrderBy(p => p.Order) // Sort by Order ascending
-                    .ThenByDescending(p => p.CreatedAt) // Then by CreatedAt descending
+                    .OrderBy(p => p.Order)
+                    .ThenByDescending(p => p.CreatedAt)
                     .Select(p => new PageDto
                     {
                         PageId = p.PageId,
                         Title = p.Title,
                         CreatedAt = p.CreatedAt,
                         UpdatedAt = p.UpdatedAt,
-                        Order = p.Order // Map the Order property
+                        Order = p.Order
                     }).ToList(),
-                OwnerEmail = isAdmin ? document.User?.Email : null // Populate OwnerEmail for admin
+                OwnerEmail = isAdmin ? document.User?.Email : null
             };
 
             return Ok(documentDetailDto);
@@ -146,6 +172,8 @@ namespace LunaArcSync.Api.Controllers
 
             var createdDocument = await _documentRepository.CreateDocumentAsync(newDocument);
 
+            _cache.Remove(CacheWarmingService.GetTagsCacheKey());
+
             var documentDto = new DocumentDto
             {
                 DocumentId = createdDocument.DocumentId,
@@ -163,7 +191,6 @@ namespace LunaArcSync.Api.Controllers
             return User.FindFirstValue(ClaimTypes.NameIdentifier);
         }
 
-
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateDocument(Guid id, [FromBody] UpdateDocumentDto updateDocumentDto)
         {
@@ -177,7 +204,8 @@ namespace LunaArcSync.Api.Controllers
                 return NotFound();
             }
 
-            // 通常 PUT 成功后返回 204 No Content
+            _cache.Remove(CacheWarmingService.GetTagsCacheKey());
+
             return NoContent();
         }
 
@@ -191,12 +219,9 @@ namespace LunaArcSync.Api.Controllers
 
             if (!success)
             {
-                // 返回一个通用的 Bad Request，因为失败的原因可能有很多种（文档找不到、页面找不到、页面已被关联等）
-                // 详细原因已在后端日志中记录
                 return BadRequest("Failed to add page to document. It may not exist, may not belong to you, or may already be in another document.");
             }
 
-            // 成功后返回 No Content
             return NoContent();
         }
 
@@ -224,7 +249,6 @@ namespace LunaArcSync.Api.Controllers
 
             var userDocuments = await _documentRepository.GetAllUserDocumentsWithDetailsAsync(userId);
 
-            // Serialize to JSON
             var jsonString = System.Text.Json.JsonSerializer.Serialize(userDocuments, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
             var fileName = $"user_data_{userId}.json";
 

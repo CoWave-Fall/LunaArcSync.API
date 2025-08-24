@@ -96,30 +96,52 @@
 
 ## 🗺️ API 接口概览
 
-### Accounts
+这是一个基于最新代码的准确接口列表。
+
+### About (公共接口)
+*   `GET /api/about`: 获取应用的基本信息。
+
+### Accounts (账户)
 *   `POST /api/accounts/register`: 注册新用户。
-*   `POST /api/accounts/login`: 用户登录，获取 JWT。
+*   `POST /api/accounts/login`: 用户登录，获取 JWT 令牌。
 
-### Documents (需认证)
-*   `GET /api/documents`: 获取当前用户的所有文档（支持分页）。
-*   `GET /api/documents/{id}`: 获取单个文档的详细信息。
-*   `POST /api/documents`: 上传图片，创建新文档。
-*   `PUT /api/documents/{id}`: 更新文档的元数据（如标题）。
-*   `DELETE /api/documents/{id}`: 删除文档及其所有版本和文件。
-*   `GET /api/documents/search`: 根据 OCR 文本内容进行全文检索。
-*   `POST /api/documents/{id}/revert`: 将文档回滚到指定的历史版本。
+### Documents (文档管理, 需认证)
+*   `GET /api/documents`: 获取用户的文档列表（管理员可获取所有文档），支持分页。
+*   `GET /api/documents/{id}`: 获取单个文档的详细信息，包含其下的页面列表。
+*   `POST /api/documents`: 创建一个**空的**新文档（仅包含标题）。
+*   `PUT /api/documents/{id}`: 更新文档的元数据（如标题、标签）。
+*   `DELETE /api/documents/{id}`: 删除一个文档及其所有关联。
+*   `POST /api/documents/{documentId}/pages`: 将一个已存在的、未分配的页面添加到文档中。
+*   `POST /api/documents/{documentId}/pages/reorder/set`: **批量设置**一个文档内多个页面的绝对顺序。
+*   `POST /api/documents/{documentId}/pages/reorder/insert`: **插入**一个页面到文档的指定顺序位置，其他页面自动后移。
+*   `GET /api/documents/stats`: 获取当前用户的统计数据（文档数、页面数等）。
+*   `GET /api/documents/my-data-export`: 导出当前用户的所有数据为 JSON 文件。
 
-### Versions (需认证)
-*   `GET /api/documents/{documentId}/versions`: 获取某个文档的所有版本历史。
-*   `POST /api/documents/{documentId}/versions`: 上传新图片，为文档创建新版本。
+### Pages (页面管理, 需认证)
+*   `GET /api/pages`: 获取用户所有**未被文档管理的**页面列表，支持分页。
+*   `GET /api/pages/unassigned`: 获取所有未分配到任何文档的页面。
+*   `GET /api/pages/{id}`: 获取单个页面的详细信息，包含其当前版本信息。
+*   `POST /api/pages`: **上传图片，创建新页面**。这是所有内容的入口。
+*   `PUT /api/pages/{id}`: 更新页面的标题。
+*   `DELETE /api/pages/{id}`: 删除一个页面及其所有版本和物理文件。
+*   `GET /api/pages/search`: 根据 OCR 文本内容进行**全文检索**。
+*   `POST /api/pages/{id}/revert`: 将页面**回滚**到指定的历史版本。
 
-### Jobs (需认证)
-*   `GET /api/jobs/{jobId}`: 查询异步任务的当前状态。
-*   `POST /api/jobs/ocr/{versionId}`: 提交一个 OCR 任务。
-*   `POST /api/jobs/stitch/document/{documentId}`: 提交一个图像拼接任务。
+### Versions (版本管理, 需认证)
+*   `GET /api/pages/{pageId}/versions`: 获取某个页面的所有历史版本。
+*   `POST /api/pages/{pageId}/versions`: 上传新图片，为指定页面**创建新版本**。
 
-### Images（需认证）
-*  `GET /api/images/{versionId}`:获得图片传入
+### Images (图片获取, 需认证)
+*   `GET /api/images/{versionId}`: 根据版本ID获取对应的图片文件。
+
+### Jobs (后台任务, 需认证)
+*   `GET /api/jobs/{jobId}`: 查询异步任务（OCR, 图像拼接）的当前状态。
+*   `POST /api/jobs/ocr/{versionId}`: 为指定的版本提交一个 OCR 识别任务。
+*   `POST /api/jobs/stitch/page/{pageId}`: 提交一个图像拼接任务，将指定页面的多个版本拼接成一张新图片。
+
+### Data (数据管理, 需管理员认证)
+*   `GET /api/data/export`: 导出整个 SQLite 数据库文件。
+*   `POST /api/data/import`: 上传数据库文件，覆盖现有数据库。
 
 ## 🔮 未来展望
 

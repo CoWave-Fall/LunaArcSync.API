@@ -14,8 +14,10 @@ namespace LunaArcSync.Api.Core.Interfaces
         /// <param name="userId">The ID of the user.</param>
         /// <param name="pageNumber">The page number to retrieve.</param>
         /// <param name="pageSize">The number of items per page.</param>
+        /// <param name="sortBy">The sort order for the documents.</param>
+        /// <param name="tags">A list of tags to filter the documents by.</param>
         /// <returns>A PagedResult containing the documents.</returns>
-        Task<PagedResult<Document>> GetAllDocumentsAsync(string userId, int pageNumber, int pageSize);
+        Task<PagedResult<Document>> GetAllDocumentsAsync(string userId, int pageNumber, int pageSize, string sortBy, List<string> tags);
 
         /// <summary>
         /// Asynchronously gets a single document by its ID, including its associated pages, ensuring it belongs to the user.
@@ -67,13 +69,12 @@ namespace LunaArcSync.Api.Core.Interfaces
         /// <returns>A UserStatsDto containing the counts.</returns>
         Task<UserStatsDto> GetUserStatsAsync(string userId);
 
-        /// <summary>
-        /// Asynchronously gets a paginated list of all documents for admin view.
-        /// </summary>
         /// <param name="pageNumber">The page number to retrieve.</param>
         /// <param name="pageSize">The number of items per page.</param>
+        /// <param name="sortBy">The sort order for the documents.</param>
+        /// <param name="tags">A list of tags to filter the documents by.</param>
         /// <returns>A PagedResult containing all documents.</returns>
-        Task<PagedResult<Document>> GetAllDocumentsForAdminAsync(int pageNumber, int pageSize);
+        Task<PagedResult<Document>> GetAllDocumentsForAdminAsync(int pageNumber, int pageSize, string sortBy, List<string> tags);
 
         /// <summary>
         /// Asynchronously gets a single document by its ID for admin view, including its associated pages and user.
@@ -82,11 +83,14 @@ namespace LunaArcSync.Api.Core.Interfaces
         /// <returns>The Document entity with its Pages and User collection, or null if not found.</returns>
         Task<Document?> GetDocumentWithPagesByIdForAdminAsync(Guid documentId);
 
-        /// <summary>
-        /// Asynchronously gets all documents for a specific user, including their pages and tags.
-        /// </summary>
-        /// <param name="userId">The ID of the user.</param>
+                /// <param name="userId">The ID of the user.</param>
         /// <returns>A list of Document entities with their related data.</returns>
         Task<List<Core.Entities.Document>> GetAllUserDocumentsWithDetailsAsync(string userId);
+
+        /// <summary>
+        /// Asynchronously gets a list of all unique tag names.
+        /// </summary>
+        /// <returns>A list of all unique tag names.</returns>
+        Task<List<string>> GetAllTagsAsync();
     }
     }

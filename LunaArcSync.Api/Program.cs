@@ -121,11 +121,16 @@ builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IOcrService, TesseractOcrService>();
 builder.Services.AddScoped<IImageProcessingService, OpenCvImageProcessingService>();
 
+// App Status & Cache
+builder.Services.AddSingleton<IApplicationStatusService, ApplicationStatusService>();
+builder.Services.AddMemoryCache();
+
 // ̨ (Singleton ֤ȫΨһ)
 builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
 
 // йܵĺ̨
 builder.Services.AddHostedService<QueuedHostedService>();
+builder.Services.AddHostedService<CacheWarmingService>();
 
 
 // --- 2. Ӧó ---
