@@ -1,0 +1,43 @@
+@page
+@model LunaArcSync.Api.Pages.SettingsModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<h1 class="mt-4">Settings</h1>
+<ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+    <li class="breadcrumb-item active">Settings</li>
+</ol>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-cog me-1"></i>
+        Application Settings
+    </div>
+    <div class="card-body">
+        @if (TempData["Message"] != null)
+        {
+            <div class="alert alert-success" role="alert">
+                @TempData["Message"]
+            </div>
+        }
+        <form method="post">
+            <div class="mb-3">
+                <label asp-for="ServerName" class="form-label">Server Name</label>
+                <input asp-for="ServerName" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label asp-for="HttpsPort" class="form-label">HTTPS Port</label>
+                <input asp-for="HttpsPort" type="number" class="form-control" />
+                <span asp-validation-for="HttpsPort" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="HttpPort" class="form-label">HTTP Port</label>
+                <input asp-for="HttpPort" type="number" class="form-control" />
+                <span asp-validation-for="HttpPort" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+        </form>
+    </div>
+</div>

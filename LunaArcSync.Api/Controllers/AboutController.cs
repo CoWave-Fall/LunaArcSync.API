@@ -2,6 +2,7 @@
 using LunaArcSync.Api.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System.Net;
 
 namespace LunaArcSync.Api.Controllers
@@ -21,6 +22,11 @@ namespace LunaArcSync.Api.Controllers
         [HttpGet]
         public ActionResult<AboutDto> GetAboutInfo()
         {
+            ConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
+            configurationBuilder.SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json");
+
+            var _configuration = configurationBuilder.Build();
             if (!_statusService.IsAppReady)
             {
                 var unavailableDto = new
@@ -31,7 +37,10 @@ namespace LunaArcSync.Api.Controllers
                 return StatusCode((int)HttpStatusCode.ServiceUnavailable, unavailableDto);
             }
 
-            var aboutInfo = new AboutDto();
+            var aboutInfo = new AboutDto
+            {
+                ServerName = _configuration["ServerName"] ?? "Default Server Name"
+            };
             return Ok(aboutInfo);
         }
     }

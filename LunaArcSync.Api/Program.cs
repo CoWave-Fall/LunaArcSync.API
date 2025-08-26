@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http; // ADDED THIS LINE
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +19,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. ÷ (ע) ---
+// --- 1. 服务注册 (DI) ---
 
 // +++  CORS  +++
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
@@ -31,21 +28,19 @@ builder.Services.AddCors(options =>
     options.AddPolicy(name: MyAllowSpecificOrigins,
                       policy =>
                       {
-                          // ڿУκԴκηκͷ
                           policy.AllowAnyOrigin()
                                 .AllowAnyMethod()
                                 .AllowAnyHeader();
                       });
 });
 
-// 1.1 עݿ (DbContext)
+// 1.1 注册数据库 (DbContext)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 1.2  ASP.NET Core Identity
+// 1.2 注册 ASP.NET Core Identity
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {
-    // 
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = false;
@@ -55,47 +50,56 @@ builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// 1.3  JWT (JSON Web Token) ֤
-builder.Services.AddAuthentication(options =>
+builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.SaveToken = true;
-    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment(); // Set to true in production
-    options.TokenValidationParameters = new TokenValidationParameters()
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidAudience = builder.Configuration["JWT:ValidAudience"],
-        ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
-        // Կ֤ Token ǩĹؼ
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]!))
-    };
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    options.SlidingExpiration = false; // Ensure cookie expires immediately on logout
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(1); // Short lifespan for session cookies
 });
 
-// 1.4 ע API ط
+
+
+
+// 1.4 注册 API 控制器和 Razor Pages
 builder.Services.AddControllers();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminPolicy", policy => policy.RequireRole(UserRoles.Admin));
+});
+builder.Services.AddRazorPages(options =>
+{
+    // Allow anonymous access to public pages
+    options.Conventions.AllowAnonymousToFolder("/Public");
+
+    // Authorize admin pages with AdminPolicy
+    options.Conventions.AuthorizePage("/Index", "AdminPolicy"); // Dashboard
+    options.Conventions.AuthorizeFolder("/Users", "AdminPolicy");
+    options.Conventions.AuthorizeFolder("/Documents", "AdminPolicy");
+    options.Conventions.AuthorizeFolder("/Settings", "AdminPolicy");
+
+    // Allow anonymous access to login, logout, and access denied pages
+    options.Conventions.AllowAnonymousToPage("/Account/Login");
+    options.Conventions.AllowAnonymousToPage("/Account/Logout");
+    options.Conventions.AllowAnonymousToPage("/Account/AccessDenied");
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.OperationFilter<SwaggerFileOperationFilter>(); // ADDED THIS LINE
+    options.OperationFilter<SwaggerFileOperationFilter>();
 
-    // 1. 尲ȫ (Security Scheme)
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
-        Name = "Authorization", // Ҫӵͷе key
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http, //  Http
-        Scheme = "Bearer", // ֤ Bearer
-        BearerFormat = "JWT", // Bearer ĸʽ JWT
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header, // Token λͷ
-        Description = " Bearer Token, ʽΪ: Bearer {token}"
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "请输入 Bearer Token, 格式为: Bearer {token}"
     });
 
-    // 2. ȫְȫҪ (Security Requirement)
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
@@ -104,19 +108,20 @@ builder.Services.AddSwaggerGen(options =>
                 Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
                     Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer" //  Id  AddSecurityDefinition еĵһһ
+                    Id = "Bearer"
                 }
             },
             new string[] {}
         }
     });
 });
-// 1.5 עԶӦ÷
+
+// 1.5 注册自定义应用服务
 // Repository
 builder.Services.AddScoped<IPageRepository, PageRepository>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>(); 
 
-// ķ
+// Services
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IOcrService, TesseractOcrService>();
 builder.Services.AddScoped<IImageProcessingService, OpenCvImageProcessingService>();
@@ -125,28 +130,25 @@ builder.Services.AddScoped<IImageProcessingService, OpenCvImageProcessingService
 builder.Services.AddSingleton<IApplicationStatusService, ApplicationStatusService>();
 builder.Services.AddMemoryCache();
 
-// ̨ (Singleton ֤ȫΨһ)
+// Background Tasks
 builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
-
-// йܵĺ̨
 builder.Services.AddHostedService<QueuedHostedService>();
 builder.Services.AddHostedService<CacheWarmingService>();
 
 
-// --- 2. Ӧó ---
+// --- 2. 构建应用 ---
 var app = builder.Build();
 
 
-// --- 3.  HTTP ܵ (м) ---
+// --- 3. 配置 HTTP 请求管道 (中间件) ---
 
-// 3.1 ڳʱԶӦݿǨ
+// 3.1 启动时自动应用数据库迁移
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
-        // ȷݿⱻӦйǨ
         context.Database.Migrate();
         await SeedData(services);
     }
@@ -157,35 +159,29 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 3.2 ÿм
+// 3.2 开发环境中间件
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    // ڿУʾϸ쳣ҳ
     app.UseDeveloperExceptionPage();
 }
 
-// 3.3 м˳ǳҪ
+// 3.3 标准中间件
 app.UseHttpsRedirection();
-
-// ·
+app.UseStaticFiles();
+app.UseStatusCodePagesWithReExecute("/NotFound");
 app.UseRouting();
-
-// +++  CORS м +++
 app.UseCors(MyAllowSpecificOrigins);
-
-// ֤м ( UseAuthorization ֮ǰ)
 app.UseAuthentication();
-
-// Ȩм
 app.UseAuthorization();
 
-// ӳ䵽
+// 3.4 映射终结点
 app.MapControllers();
+app.MapRazorPages();
 
 
-// --- 4. Ӧó ---
+// --- 4. 运行应用 ---
 app.Run();
 
 async Task SeedData(IServiceProvider serviceProvider)
@@ -207,7 +203,7 @@ async Task SeedData(IServiceProvider serviceProvider)
 
     // Seed Default Admin User
     var defaultAdminEmail = "admin@example.com";
-    var defaultAdminPassword = "admin233"; // Consider using a stronger default password in production
+    var defaultAdminPassword = "admin233";
 
     var adminUser = await userManager.FindByEmailAsync(defaultAdminEmail);
     if (adminUser == null)
@@ -231,7 +227,6 @@ async Task SeedData(IServiceProvider serviceProvider)
     else
     {
         logger.LogInformation("Default admin user '{Email}' already exists.", defaultAdminEmail);
-        // Ensure admin user has the Admin role if they somehow don't
         if (!await userManager.IsInRoleAsync(adminUser, UserRoles.Admin))
         {
             await userManager.AddToRoleAsync(adminUser, UserRoles.Admin);

@@ -1,0 +1,17 @@
+@page
+@using Microsoft.AspNetCore.Identity
+@using LunaArcSync.Api.Core.Entities
+@inject SignInManager<AppUser> SignInManager
+@{
+    Layout = null; // This page does not use the main layout
+}
+
+@functions
+{
+    public async Task<IActionResult> OnPost()
+    {
+        await SignInManager.SignOutAsync();
+        Response.Cookies.Delete(IdentityConstants.ApplicationScheme);
+        return RedirectToPage("/Account/Login");
+    }
+}
