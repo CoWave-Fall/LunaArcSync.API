@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/LunaArcSync.Api/LunaArcSync.db-shm
+/LunaArcSync.Api/LunaArcSync.db-wal
+/LunaArcSync.Api/LunaArcSync.db
