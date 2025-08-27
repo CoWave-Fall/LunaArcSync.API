@@ -126,26 +126,55 @@ namespace LunaArcSync.Api.Infrastructure.Data
 
         #region Search
 
-        public async Task<PagedResultDto<Page>> SearchPagesAsync(string query, string userId, int pageNumber, int pageSize)
+        public async Task<List<SearchResultDto>> SearchPagesAsync(string query, string userId, bool isAdmin)
         {
-            var normalizedQuery = new string(query.Where(c => !char.IsWhiteSpace(c)).ToArray());
+            var normalizedQuery = query.Trim().ToLower();
             if (string.IsNullOrEmpty(normalizedQuery))
             {
-                return new PagedResultDto<Page>(new List<Page>(), 0, pageNumber, pageSize);
+                return new List<SearchResultDto>();
             }
-            var searchQuery = _context.Versions
-                .Where(v => v.Page!.UserId == userId &&
-                            v.OcrDataNormalized != null &&
-                            v.OcrDataNormalized.Contains(normalizedQuery))
-                .Select(v => v.Page!)
-                .Distinct();
-            var totalCount = await searchQuery.CountAsync();
-            var items = await searchQuery
-                .OrderByDescending(d => d.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-            return new PagedResultDto<Page>(items, totalCount, pageNumber, pageSize);
+
+            IQueryable<Page> pagesQuery = _context.Pages
+                .Include(p => p.Versions)
+                .Include(p => p.Document);
+
+            if (!isAdmin)
+            {
+                pagesQuery = pagesQuery.Where(p => p.UserId == userId);
+            }
+
+            var results = await pagesQuery
+                .Where(p => p.Title.ToLower().Contains(normalizedQuery) ||
+                            p.Versions.Any(v => v.OcrDataNormalized != null && v.OcrDataNormalized.ToLower().Contains(normalizedQuery)))
+                .ToListAsync(); // Fetch data first
+
+            return results.Select(p => new SearchResultDto
+            {
+                Type = "page",
+                DocumentId = p.DocumentId,
+                PageId = p.PageId,
+                Title = p.Title,
+                MatchSnippet = p.Title.ToLower().Contains(normalizedQuery) 
+                    ? p.Title // If title matches, use title as snippet
+                    : p.Versions.Where(v => v.OcrDataNormalized != null && v.OcrDataNormalized.ToLower().Contains(normalizedQuery))
+                                .Select(v => ExtractSnippet(v.OcrDataNormalized!, normalizedQuery))
+                                .FirstOrDefault() ?? p.Title // Otherwise, extract from OCR or default to title
+            }).ToList();
+        }
+
+        private string ExtractSnippet(string text, string query, int snippetLength = 100)
+        {
+            var index = text.ToLower().IndexOf(query);
+            if (index == -1) return text.Substring(0, Math.Min(text.Length, snippetLength)) + (text.Length > snippetLength ? "..." : "");
+
+            var start = Math.Max(0, index - snippetLength / 2);
+            var end = Math.Min(text.Length, index + query.Length + snippetLength / 2);
+
+            var snippet = text.Substring(start, end - start);
+            if (start > 0) snippet = "..." + snippet;
+            if (end < text.Length) snippet = snippet + "...";
+
+            return snippet;
         }
 
         #endregion

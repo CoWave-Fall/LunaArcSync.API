@@ -47,7 +47,7 @@
       <!-- Sidebar user panel (optional) -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="info">
-          <a href="#" class="d-block">@User.Identity.Name</a>
+          <a href="#" class="d-block">@(User.Identity?.Name ?? "Guest")</a>
         </div>
       </div>
 
@@ -58,6 +58,12 @@
             <a asp-page="/Index" class="nav-link">
               <i class="nav-icon fas fa-tachometer-alt"></i>
               <p>Dashboard</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a asp-page="/User/MyData" class="nav-link">
+              <i class="nav-icon fas fa-user"></i>
+              <p>My Data</p>
             </a>
           </li>
           <li class="nav-item">
@@ -76,6 +82,12 @@
             <a asp-page="/Settings" class="nav-link">
               <i class="nav-icon fas fa-cog"></i>
               <p>Settings</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a asp-page="/Admin/DataManagement" class="nav-link">
+              <i class="nav-icon fas fa-file-export"></i>
+              <p>Data Management</p>
             </a>
           </li>
         </ul>

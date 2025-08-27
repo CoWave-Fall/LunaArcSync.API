@@ -18,7 +18,7 @@ namespace LunaArcSync.Api.Pages
             _userManager = userManager;
         }
 
-        public List<AppUser> Users { get; set; }
+        public List<AppUser> Users { get; set; } = new List<AppUser>();
 
         public async Task OnGetAsync()
         {

@@ -48,6 +48,25 @@ namespace LunaArcSync.Api.Infrastructure.FileStorage
             return newFileName;
         }
 
+
+        public async Task<string> SaveFileFromPathAsync(string sourcePath, Page page, Core.Entities.Version version)
+        {
+            if (!System.IO.File.Exists(sourcePath))
+            {
+                throw new FileNotFoundException($"Source file not found: {sourcePath}");
+            }
+
+            var fileExtension = Path.GetExtension(sourcePath);
+            var newFileName = $"{page.PageId}_{version.VersionId}{fileExtension}";
+
+            var destinationPath = Path.Combine(_storageRootPath, newFileName);
+            _logger.LogInformation("Saving file from path {sourcePath} to absolute path: {destinationPath}", sourcePath, destinationPath);
+
+            await Task.Run(() => System.IO.File.Copy(sourcePath, destinationPath, true)); // Overwrite if exists
+
+            return newFileName;
+        }
+
         public void DeleteFile(string fileName)
         {
             if (string.IsNullOrEmpty(fileName)) return;
@@ -69,6 +88,15 @@ namespace LunaArcSync.Api.Infrastructure.FileStorage
             {
                 _logger.LogError(ex, "Error occurred while deleting file: {FilePath}", filePath);
             }
+        }
+
+        public string GetFilePath(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+            {
+                throw new ArgumentException("File name cannot be null or empty.", nameof(fileName));
+            }
+            return Path.Combine(_storageRootPath, fileName);
         }
 
         // +++ 添加这个新方法的完整实现 +++

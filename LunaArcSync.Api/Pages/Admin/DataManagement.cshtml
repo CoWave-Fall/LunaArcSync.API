@@ -1,0 +1,55 @@
+@page
+@model LunaArcSync.Api.Pages.Admin.DataManagementModel
+@{
+    ViewData["Title"] = "Data Management";
+}
+
+<h1 class="mt-4">Data Management</h1>
+<ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+    <li class="breadcrumb-item active">Data Management</li>
+</ol>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-database me-1"></i>
+        Export/Import All Data (Admin Only)
+    </div>
+    <div class="card-body">
+        @if (TempData["Message"] != null)
+        {
+            <div class="alert alert-success" role="alert">
+                @TempData["Message"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger" role="alert">
+                @TempData["Error"]
+            </div>
+        }
+
+        <h5 class="mb-3">Export All Data</h5>
+        <p>Export all documents, pages, and versions from the system as a ZIP archive.</p>
+        <a href="/api/data/export" class="btn btn-primary mb-4">Export All Data</a>
+
+        <h5 class="mb-3">Export Specific User Data</h5>
+        <p>Export documents, pages, and versions for a specific user as a ZIP archive.</p>
+        <form method="get" action="/api/data/export/user" class="mb-4">
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" placeholder="User ID" name="targetUserId" required>
+                <button class="btn btn-primary" type="submit">Export User Data</button>
+            </div>
+        </form>
+
+        <h5 class="mb-3">Import Data</h5>
+        <p>Import documents, pages, and versions from a previously exported ZIP archive.</p>
+        <form method="post" enctype="multipart/form-data" asp-page-handler="Import">
+            <div class="mb-3">
+                <label for="fileInput" class="form-label">Select ZIP File</label>
+                <input class="form-control" type="file" id="fileInput" name="file" accept=".zip" required>
+            </div>
+            <button type="submit" class="btn btn-success">Import Data</button>
+        </form>
+    </div>
+</div>

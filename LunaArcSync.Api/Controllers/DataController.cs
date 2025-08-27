@@ -1,119 +1,105 @@
+using LunaArcSync.Api.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using LunaArcSync.Api.Core.Constants;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Data.Sqlite; // ADDED
+using Microsoft.AspNetCore.Identity;
+using LunaArcSync.Api.Core.Entities;
+using LunaArcSync.Api.DTOs;
 
 namespace LunaArcSync.Api.Controllers
 {
-    [Authorize(Roles = UserRoles.Admin)] // Only Admin users can access this controller
     [ApiController]
     [Route("api/[controller]")]
     public class DataController : ControllerBase
     {
-        private readonly ILogger<DataController> _logger;
-        private readonly string _databasePath;
+        private readonly IDataExportImportService _dataService;
+        private readonly UserManager<AppUser> _userManager;
 
-        public DataController(ILogger<DataController> logger, IConfiguration configuration)
+        public DataController(IDataExportImportService dataService, UserManager<AppUser> userManager)
         {
-            _logger = logger;
-            _databasePath = configuration.GetConnectionString("DefaultConnection")?.Replace("Data Source=", "")
-                            ?? throw new InvalidOperationException("Database connection string not configured.");
+            _dataService = dataService;
+            _userManager = userManager;
         }
 
         [HttpGet("export")]
-        public IActionResult ExportDatabase()
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ExportAllData()
         {
-            // Create a temporary file for the backup
-            var tempFilePath = Path.GetTempFileName();
-            try
+            var stream = await _dataService.ExportDataAsync(null, true);
+            return File(stream, "application/zip", "LunaArcSync_AllData_Export.zip");
+        }
+
+        [HttpGet("export/my")]
+        [Authorize]
+        public async Task<IActionResult> ExportMyData()
+        {
+            var userId = _userManager.GetUserId(User);
+            if (userId == null)
             {
-                // Open a connection to the source database
-                var connectionString = $"Data Source={_databasePath}";
-                using (var sourceConnection = new SqliteConnection(connectionString))
-                {
-                    sourceConnection.Open();
-
-                    // Open a connection to the destination (backup) database
-                    using (var destinationConnection = new SqliteConnection($"Data Source={tempFilePath}"))
-                    {
-                        destinationConnection.Open();
-
-                        // Perform the online backup
-                        sourceConnection.BackupDatabase(destinationConnection);
-                    }
-                }
-
-                // Read the backup file bytes
-                var fileBytes = System.IO.File.ReadAllBytes(tempFilePath);
-                var fileName = Path.GetFileName(_databasePath); // Use original file name for download
-
-                _logger.LogInformation("Database exported successfully to temporary file {TempFilePath}", tempFilePath);
-                return File(fileBytes, "application/x-sqlite3", fileName);
+                return Unauthorized();
             }
-            catch (Exception ex)
+            var stream = await _dataService.ExportDataAsync(userId, false);
+            return File(stream, "application/zip", $"LunaArcSync_UserData_{userId}_Export.zip");
+        }
+
+        [HttpGet("export/user/{targetUserId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ExportSpecificUserData(string targetUserId)
+        {
+            if (string.IsNullOrEmpty(targetUserId))
             {
-                _logger.LogError(ex, "Error exporting database: {Message}", ex.Message);
-                return StatusCode(500, "An error occurred during database export. It might be locked or corrupted.");
+                return BadRequest("Target user ID must be provided.");
             }
-            finally
-            {
-                // Clean up the temporary file
-                if (System.IO.File.Exists(tempFilePath))
-                {
-                    System.IO.File.Delete(tempFilePath);
-                }
-            }
+            var requestingUserId = _userManager.GetUserId(User);
+            var stream = await _dataService.ExportDataAsync(requestingUserId, true, targetUserId);
+            return File(stream, "application/zip", $"LunaArcSync_UserData_{targetUserId}_Export.zip");
         }
 
         [HttpPost("import")]
-        public async Task<IActionResult> ImportDatabase(IFormFile file)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ImportAllData([FromForm] ImportFileDto importFileDto)
         {
-            if (file == null || file.Length == 0)
+            if (importFileDto.File == null || importFileDto.File.Length == 0)
             {
                 return BadRequest("No file uploaded.");
             }
 
-            if (!file.FileName.EndsWith(".db", StringComparison.OrdinalIgnoreCase) &&
-                !file.FileName.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase) &&
-                !file.FileName.EndsWith(".sqlite3", StringComparison.OrdinalIgnoreCase))
+            var importingUserId = _userManager.GetUserId(User);
+            if (importingUserId == null)
             {
-                return BadRequest("Invalid file type. Only .db, .sqlite, or .sqlite3 files are allowed.");
+                return Unauthorized();
             }
 
-            _logger.LogWarning("Attempting to import database. This will overwrite the existing database at {DatabasePath}. Application restart may be required.", _databasePath);
-
-            try
+            using (var stream = importFileDto.File.OpenReadStream())
             {
-                // Ensure the directory exists
-                var directory = Path.GetDirectoryName(_databasePath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
+                await _dataService.ImportDataAsync(stream, importingUserId, true);
+            }
 
-                // Copy the uploaded file to the database path
-                using (var stream = new FileStream(_databasePath, FileMode.Create, FileAccess.Write, FileShare.None))
-                {
-                    await file.CopyToAsync(stream);
-                }
+            return Ok("Data imported successfully.");
+        }
 
-                _logger.LogInformation("Database imported successfully to {DatabasePath}. Application restart is recommended.", _databasePath);
-                return Ok("Database imported successfully. Please restart the application for changes to take full effect.");
-            }
-            catch (IOException ex)
+        [HttpPost("import/my")]
+        [Authorize]
+        public async Task<IActionResult> ImportMyData([FromForm] ImportFileDto importFileDto)
+        {
+            if (importFileDto.File == null || importFileDto.File.Length == 0)
             {
-                _logger.LogError(ex, "Error importing database: {Message}", ex.Message);
-                return StatusCode(500, "Error importing database. It might be locked or in use. Please ensure the application is not actively using the database during import.");
+                return BadRequest("No file uploaded.");
             }
-            catch (Exception ex)
+
+            var importingUserId = _userManager.GetUserId(User);
+            if (importingUserId == null)
             {
-                _logger.LogError(ex, "Unexpected error importing database: {Message}", ex.Message);
-                return StatusCode(500, "An unexpected error occurred during import.");
+                return Unauthorized();
             }
+
+            using (var stream = importFileDto.File.OpenReadStream())
+            {
+                await _dataService.ImportDataAsync(stream, importingUserId, false);
+            }
+
+            return Ok("Your data imported successfully.");
         }
     }
 }

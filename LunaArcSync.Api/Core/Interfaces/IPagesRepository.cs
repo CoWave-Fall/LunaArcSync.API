@@ -43,9 +43,9 @@ namespace LunaArcSync.Api.Core.Interfaces
         // --- Search ---
 
         /// <summary>
-        /// Searches for pages for a specific user based on a query.
+        /// Searches for pages for a specific user based on a query, including page title and OCR content.
         /// </summary>
-        Task<PagedResultDto<Page>> SearchPagesAsync(string query, string userId, int pageNumber, int pageSize);
+        Task<List<SearchResultDto>> SearchPagesAsync(string query, string userId, bool isAdmin);
 
 
         // --- Version Management (Context provided by Controller) ---

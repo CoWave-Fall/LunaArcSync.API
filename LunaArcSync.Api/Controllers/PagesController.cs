@@ -134,55 +134,6 @@ namespace LunaArcSync.Api.Controllers
 
         #endregion
 
-        #region Search & Versioning
-
-        [HttpGet("search")]
-        public async Task<ActionResult<PagedResultDto<PageDto>>> Search([FromQuery] string q, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
-        {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
-            if (string.IsNullOrWhiteSpace(q)) return BadRequest("Search query cannot be empty.");
-
-            var pagedPages = await _pageRepository.SearchPagesAsync(q, userId, pageNumber, pageSize);
-                        var pageDtos = pagedPages.Items.Select(d => new PageDto
-            {
-                PageId = d.PageId,
-                Title = d.Title,
-                CreatedAt = d.CreatedAt,
-                UpdatedAt = d.UpdatedAt,
-                Order = d.Order // Map the Order property
-            }).ToList();
-
-            return Ok(new PagedResultDto<PageDto>(pageDtos, pagedPages.TotalCount, pagedPages.PageNumber, pagedPages.PageSize));
-        }
-
-        [HttpPost("{id}/revert")]
-        public async Task<IActionResult> RevertPage(Guid id, [FromBody] RevertPageDto revertDto)
-        {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            // 验证文档属于当前用户
-            var page = await _pageRepository.GetPageByIdAsync(id, userId);
-            if (page == null) return NotFound();
-
-            // 验证目标版本存在且属于该文档
-            var versionToRevert = await _pageRepository.GetVersionByIdAsync(revertDto.TargetVersionId);
-            if (versionToRevert == null || versionToRevert.PageId != id)
-            {
-                return BadRequest("Target version not found or does not belong to this page.");
-            }
-
-            var success = await _pageRepository.SetCurrentVersionAsync(id, revertDto.TargetVersionId);
-            if (!success) return StatusCode(500, "An unexpected error occurred while reverting.");
-
-            // 返回包含新版本号的对象
-            return Ok(new { newVersionNumber = versionToRevert.VersionNumber });
-        }
-
-        #endregion
-
         #region Page Ordering
 
         [HttpPost("/api/documents/{documentId}/pages/reorder/set")]

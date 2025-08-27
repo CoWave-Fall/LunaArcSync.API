@@ -98,7 +98,7 @@ namespace LunaArcSync.Api.Controllers
             }
 
             var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]!));;
-            var tokenExpiration = DateTime.Now.AddHours(3); // Token 有效期3小时
+            var tokenExpiration = DateTime.Now.AddDays(10); // Token 有效期10天
 
             var token = new JwtSecurityToken(
                 issuer: _configuration["JWT:ValidIssuer"],

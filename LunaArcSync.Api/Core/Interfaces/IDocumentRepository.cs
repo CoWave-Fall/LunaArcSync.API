@@ -92,5 +92,10 @@ namespace LunaArcSync.Api.Core.Interfaces
         /// </summary>
         /// <returns>A list of all unique tag names.</returns>
         Task<List<string>> GetAllTagsAsync();
+
+        /// <summary>
+        /// Searches for documents based on title.
+        /// </summary>
+        Task<List<SearchResultDto>> SearchDocumentsAsync(string query, string userId, bool isAdmin);
     }
     }

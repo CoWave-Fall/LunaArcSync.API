@@ -12,14 +12,15 @@ namespace LunaArcSync.Api.Pages
     public class DocumentsModel : PageModel
     {
         private readonly IDocumentRepository _documentRepository;
+        private readonly UserManager<AppUser> _userManager;
 
-        public DocumentsModel(IDocumentRepository documentRepository)
+        public DocumentsModel(IDocumentRepository documentRepository, UserManager<AppUser> userManager)
         {
             _documentRepository = documentRepository;
+            _userManager = userManager;
         }
 
         public IEnumerable<Document> Documents { get; set; } = new List<Document>();
-        private readonly UserManager<AppUser> _userManager;
 
         public async Task OnGetAsync()
         {

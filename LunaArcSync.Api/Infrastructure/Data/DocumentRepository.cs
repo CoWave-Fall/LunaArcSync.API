@@ -226,6 +226,38 @@ namespace LunaArcSync.Api.Infrastructure.Data
                 .ToListAsync();
         }
 
+        public async Task<List<SearchResultDto>> SearchDocumentsAsync(string query, string userId, bool isAdmin)
+        {
+            var normalizedQuery = query.Trim().ToLower();
+            if (string.IsNullOrEmpty(normalizedQuery))
+            {
+                return new List<SearchResultDto>();
+            }
+
+            IQueryable<Document> documentsQuery = _context.Documents
+                .Include(d => d.User)
+                .Include(d => d.Pages);
+
+            if (!isAdmin)
+            {
+                documentsQuery = documentsQuery.Where(d => d.UserId == userId);
+            }
+
+            var results = await documentsQuery
+                .Where(d => d.Title.ToLower().Contains(normalizedQuery))
+                .Select(d => new SearchResultDto
+                {
+                    Type = "document",
+                    DocumentId = d.DocumentId,
+                    PageId = null,
+                    Title = d.Title,
+                    MatchSnippet = d.Title // For document title match, snippet is the title itself
+                })
+                .ToListAsync();
+
+            return results;
+        }
+
         private IQueryable<Document> ApplySorting(IQueryable<Document> query, string sortBy)
         {
             return sortBy?.ToLower() switch

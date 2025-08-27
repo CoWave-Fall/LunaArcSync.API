@@ -1,0 +1,46 @@
+@page
+@model LunaArcSync.Api.Pages.User.MyDataModel
+@{
+    ViewData["Title"] = "My Data";
+}
+
+<h1 class="mt-4">My Data</h1>
+<ol class="breadcrumb mb-4">
+    <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+    <li class="breadcrumb-item active">My Data</li>
+</ol>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-database me-1"></i>
+        Export/Import My Data
+    </div>
+    <div class="card-body">
+        @if (TempData["Message"] != null)
+        {
+            <div class="alert alert-success" role="alert">
+                @TempData["Message"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger" role="alert">
+                @TempData["Error"]
+            </div>
+        }
+
+        <h5 class="mb-3">Export My Data</h5>
+        <p>Export all your documents, pages, and versions as a ZIP archive.</p>
+        <a href="/api/data/export/my" class="btn btn-primary mb-4">Export My Data</a>
+
+        <h5 class="mb-3">Import Data</h5>
+        <p>Import documents, pages, and versions from a previously exported ZIP archive.</p>
+        <form method="post" enctype="multipart/form-data" asp-page-handler="Import">
+            <div class="mb-3">
+                <label for="fileInput" class="form-label">Select ZIP File</label>
+                <input class="form-control" type="file" id="fileInput" name="file" accept=".zip" required>
+            </div>
+            <button type="submit" class="btn btn-success">Import Data</button>
+        </form>
+    </div>
+</div>

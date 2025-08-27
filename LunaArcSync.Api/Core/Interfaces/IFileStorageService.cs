@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using LunaArcSync.Api.Core.Entities; // 引入实体
 using System.Threading.Tasks; // 引入 Tasks
 
@@ -12,11 +12,20 @@ namespace LunaArcSync.Api.Core.Interfaces
         Task<string> SaveFileAsync(IFormFile file, Page page, Core.Entities.Version version);
 
         /// <summary>
+        /// Saves a file from a given source path to the configured storage and returns its unique name.
+        /// </summary>
+        Task<string> SaveFileFromPathAsync(string sourcePath, Page page, Core.Entities.Version version);
+
+        /// <summary>
         /// Deletes a file from the storage.
         /// </summary>
         void DeleteFile(string fileName);
 
-        // +++ 添加这个新方法的定义 +++
+        /// <summary>
+        /// Gets the absolute file path for a given file name in the storage.
+        /// </summary>
+        string GetFilePath(string fileName);
+
         /// <summary>
         /// Reads a file from the storage and returns its content as a byte array.
         /// </summary>
